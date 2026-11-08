@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pump Rider — ride the chart, dodge the rug</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M24 3c5 5 8 12 8 20l-8 9-8-9c0-8 3-15 8-20z" fill="var(--logo-body)"/>
+      <circle cx="24" cy="17" r="4.5" fill="var(--logo-win)"/>
+      <path d="M16 26l-6 8 8-2M32 26l6 8-8-2" stroke="var(--logo-fin)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M20 36c1.5 3 6.5 3 8 0l-4 9z" fill="var(--logo-flame)"/>
+    </svg>
+    <div>
+      <h1>PUMP <span class="rider">RIDER</span></h1>
+      <p class="tagline">Ride the memecoin chart. Hold to pump, let go to fall. Do not kiss the line.</p>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="k">Score</span><span class="v" id="stat-score">0</span></div>
+    <div class="stat" id="stat-best-box"><span class="k">Best</span><span class="v" id="stat-best">0</span></div>
+    <div class="stat"><span class="k">Combo</span><span class="v" id="stat-combo">—</span></div>
+    <div class="stat"><span class="k">Orbs</span><span class="v" id="stat-orbs">0</span></div>
+    <div class="stat"><span class="k">Speed</span><span class="v" id="stat-speed">1.0x</span></div>
+  </div>
+  <div class="actions">
+    <button id="btn-pause" title="Pause (P)">Pause</button>
+    <button id="btn-sound" title="Toggle sound (M)">Sound: on</button>
+    <button id="btn-theme" title="Toggle dark / light theme">Theme: dark</button>
+  </div>
+</header>
+
+<main class="stage-wrap">
+  <div id="stage" class="stage">
+    <canvas id="game"></canvas>
+    <div id="rug-banner" class="rug-banner hidden">RUG PULL INBOUND</div>
+    <div id="paused-banner" class="paused-banner hidden">PAUSED — press P to ride on</div>
+
+    <div id="overlay-start" class="overlay">
+      <div class="card">
+        <h2>Ride the chart</h2>
+        <p>hold to pump. let go to fall. do not kiss the line.</p>
+        <div class="settings-panel">
+          <button type="button" class="settings-head settings-toggle" id="btn-start-settings" aria-expanded="false">
+            <span>Difficulty</span><span class="preset-name">Chill</span><span class="chev" aria-hidden="true">▸</span>
+          </button>
+          <div class="settings-body hidden" id="start-settings-body">
+            <div class="chips">
+              <button type="button" class="chip" data-preset="chill">Chill</button>
+              <button type="button" class="chip" data-preset="classic">Classic</button>
+              <button type="button" class="chip" data-preset="degen">Degen</button>
+            </div>
+            <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
+            <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
+            <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+          </div>
+        </div>
+        <button id="btn-start" class="primary big">Start riding</button>
+      </div>
+    </div>
+
+    <div id="overlay-stake" class="overlay stake hidden">
+      <div class="card stake-card">
+        <h2>how much are you willing to risk, ser?</h2>
+        <div class="stake-amountrow">
+          <button type="button" id="btn-stake-minus" class="stake-step" aria-label="One step down the stake ladder">−</button>
+          <div class="stake-amount" id="stake-amount">$10</div>
+          <button type="button" id="btn-stake-plus" class="stake-step" aria-label="One step up the stake ladder">+</button>
+        </div>
+        <div class="stake-chips" id="stake-chips">
+          <button type="button" class="stake-chip" data-stake="1">$1</button>
+          <button type="button" class="stake-chip" data-stake="5">$5</button>
+          <button type="button" class="stake-chip" data-stake="10">$10</button>
+          <button type="button" class="stake-chip" data-stake="50">$50</button>
+          <button type="button" class="stake-chip" data-stake="100">$100</button>
+          <button type="button" class="stake-chip" data-stake="1000">$1,000</button>
+        </div>
+        <p class="dim small">every 100 pts is 1x on your bag.</p>
+        <button id="btn-ape" class="primary big stake-ape">APE IN $10</button>
+        <p class="stake-backrow"><button type="button" id="btn-ngmi" class="stake-back">ngmi</button></p>
+        <p class="dim small">Enter or Space apes in too.</p>
+      </div>
+    </div>
+
+    <div id="overlay-over" class="overlay hidden">
+      <div class="card card-over">
+        <h2 id="over-title" class="over-title">kissed the line.</h2>
+        <div class="pnl" id="pnl-card">
+          <div class="pnl-head">
+            <span class="pnl-brand">
+              <svg class="pnl-logo" viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M24 3c5 5 8 12 8 20l-8 9-8-9c0-8 3-15 8-20z" fill="var(--logo-body)"/>
+                <circle cx="24" cy="17" r="4.5" fill="var(--logo-win)"/>
+                <path d="M16 26l-6 8 8-2M32 26l6 8-8-2" stroke="var(--logo-fin)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                <path d="M20 36c1.5 3 6.5 3 8 0l-4 9z" fill="var(--logo-flame)"/>
+              </svg>
+              PUMP RIDER
+            </span>
+            <span class="pnl-preset" id="pnl-preset">CHILL</span>
+          </div>
+          <div class="pnl-herorow">
+            <div class="pnl-hero"><span id="pnl-score">+0</span><span class="pnl-pts">PTS</span></div>
+            <span class="pnl-verdict flat" id="pnl-verdict">FIRST TRADE ON THE BOOKS</span>
+          </div>
+          <div class="pnl-sub">
+            <div class="pnl-substat">
+              <span class="pk">TIME IN TRADE</span>
+              <b id="pnl-time">0.0s</b>
+            </div>
+            <div class="pnl-substat pnl-right">
+              <span class="pk">GAIN</span>
+              <span class="pnl-gainline"><b id="pnl-gain" class="pnl-gain flat">FIRST TRADE</b><span class="pnl-mult" id="pnl-mult">x1 combo</span></span>
+            </div>
+          </div>
+          <div class="pnl-money flat" id="pnl-money">IN $10 → OUT $0 · −$10</div>
+          <div class="pnl-chartwrap">
+            <svg class="pnl-chart" id="pnl-chart" viewBox="0 0 320 110" preserveAspectRatio="none" aria-label="Chart of this run's score"></svg>
+            <span class="pnl-peak" id="pnl-peak">HIGH 0</span>
+          </div>
+          <div class="pnl-tiles">
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V8M6.5 13V5M11 13V6.5M14.5 13V3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <b id="pnl-tile-combo">x1</b><span>Best combo</span>
+            </div>
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="currentColor"/><text x="8" y="11" text-anchor="middle" font-size="8" font-weight="800">N</text></svg>
+              <b id="pnl-tile-orbs">0</b><span>Orbs</span>
+            </div>
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9c2.5 0 2.5-4 5-4s2.5 4 5 4 2.5-4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+              <b id="pnl-tile-near">0</b><span>NEAR calls</span>
+            </div>
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 4h6v6h8" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <b id="pnl-tile-rugs">0</b><span>Rugs survived</span>
+            </div>
+          </div>
+          <p class="pnl-foot" id="pnl-foot">the pump was NEAR.</p>
+        </div>
+        <div class="pnl-actions">
+          <button type="button" id="btn-download">Download card</button>
+          <button type="button" id="btn-share">Share on X</button>
+        </div>
+        <div class="settings-panel" id="over-settings">
+          <button type="button" class="settings-head settings-toggle" id="btn-over-settings" aria-expanded="false">
+            <span>Difficulty</span><span class="preset-name">Chill</span><span class="chev" aria-hidden="true">▸</span>
+          </button>
+          <div class="settings-body hidden" id="over-settings-body">
+            <div class="chips">
+              <button type="button" class="chip" data-preset="chill">Chill</button>
+              <button type="button" class="chip" data-preset="classic">Classic</button>
+              <button type="button" class="chip" data-preset="degen">Degen</button>
+            </div>
+            <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
+            <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
+            <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+          </div>
+        </div>
+        <button id="btn-again" class="primary big">run it back</button>
+      </div>
+    </div>
+  </div>
+
+  <p id="toast" class="toast" role="status"></p>
+
+  <section class="howto panel">
+    <h2>How to ride</h2>
+    <ol>
+      <li>One button. Hold to climb, release to dive. Feather it — momentum is everything.</li>
+      <li>Orbs pay 20 points times your combo multiplier. Chain them without missing to reach x4. One miss and the combo is gone.</li>
+      <li>Close calls pay +15: pass within a whisker of the chart without touching it. Risky, repeatable, addictive.</li>
+      <li>Rug pulls are telegraphed: warning first, then the cliff, then the dead-cat bounce. The bounce is the dangerous part — it comes back up at you.</li>
+      <li>The chart scrolls faster the longer you live. Your score is distance + orbs + bonuses.</li>
+    </ol>
+  </section>
+</main>
+
+<footer>
+  <p>Built for NEAR HACKATHON 2026, Games track. A fully local arcade game:
+  no wallet, no network, no dependencies. Open <code>dist/pump-rider.html</code> and ride. See README.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

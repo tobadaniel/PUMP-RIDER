@@ -1,0 +1,2576 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pump Rider — ride the chart, dodge the rug</title>
+<style>
+/* Pump Rider theme system: every colour the page uses lives in variables
+   under [data-theme]. Dark = true black night market. Light = warm paper.
+   The canvas reads its own matching palette from app.js (THEMES). */
+
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --panel: #070707;
+  --panel2: #0d0d0d;
+  --ink: #eef2ff;
+  --dim: #9aa7d9;
+  --line: #232323;
+  --neon: #00ffa3;
+  --pink: #ff3d8a;
+  --gold: #ffd23d;
+  --gold-glow: rgba(255, 210, 61, .55);
+  --red: #ff5252;
+  --btn-bg: #0d0d0d;
+  --overlay: rgba(0, 0, 0, .62);
+  --card: rgba(5, 5, 5, .93);
+  --pnl-bg: #000000;
+  --pnl-panel: #0d0d0d;
+  --score: #ffc837;
+  --best: #00ec97;
+  --glow-a: rgba(0, 0, 0, 0);
+  --glow-b: rgba(0, 0, 0, 0);
+  --glow-c: rgba(0, 0, 0, 0);
+  --logo-body: #f5f7ff;
+  --logo-win: #45d0ff;
+  --logo-fin: #ff3d8a;
+  --logo-flame: #ffb03a;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #fdf3dd;
+  --panel: #fffaf0;
+  --panel2: #fff3da;
+  --ink: #16213c;
+  --dim: #5d6a8c;
+  --line: #e3d3ae;
+  --neon: #009e60;
+  --pink: #e02473;
+  --gold: #d97706;
+  --gold-glow: rgba(217, 119, 6, .5);
+  --red: #d92b2b;
+  --btn-bg: #fffaf0;
+  --overlay: rgba(84, 62, 20, .28);
+  --card: rgba(255, 250, 240, .94);
+  --pnl-bg: #fffdf6;
+  --pnl-panel: #fdf3dd;
+  --score: #b97e04;
+  --best: #00875a;
+  --glow-a: rgba(0, 158, 96, .14);
+  --glow-b: rgba(224, 36, 115, .10);
+  --glow-c: rgba(245, 158, 11, .16);
+  --logo-body: #ffffff;
+  --logo-win: #0e7fd8;
+  --logo-fin: #e02473;
+  --logo-flame: #ff8a2a;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; color: var(--ink);
+  background:
+    radial-gradient(900px 420px at 12% -5%, var(--glow-a), transparent 60%),
+    radial-gradient(820px 400px at 88% -5%, var(--glow-b), transparent 60%),
+    radial-gradient(700px 500px at 50% 115%, var(--glow-c), transparent 60%),
+    var(--bg);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  transition: background .35s ease, color .35s ease;
+}
+h1 { font-size: 26px; margin: 0; letter-spacing: .05em; }
+h1 .rider { color: var(--pink); }
+h2 { font-size: 17px; margin: 0 0 8px; letter-spacing: .02em; }
+.dim { color: var(--dim); }
+.small { font-size: 12.5px; }
+.hidden { display: none !important; }
+strong { font-weight: 800; }
+
+.topbar {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;
+  padding: 12px 18px; border-bottom: 1px solid var(--line);
+  background: var(--card); position: sticky; top: 0; z-index: 6; backdrop-filter: blur(6px);
+}
+.brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.logo { width: 42px; height: 42px; flex: none; }
+.tagline { margin: 2px 0 0; color: var(--dim); font-size: 13px; }
+.stats { display: flex; gap: 8px; flex-wrap: nowrap; }
+.stat {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px 10px; min-width: 74px;
+}
+.stat .k { display: block; font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+.stat .v { font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat .v.hot { color: var(--pink); }
+/* Score reads gold, Best reads NEAR green — in the HUD and on the
+   PnL card alike, never both plain white. */
+#stat-score { color: var(--score); }
+#stat-best { color: var(--best); }
+/* Beating the stored best mid-run lights the BEST box up, gold and
+   pulsing, until the next run starts. */
+.stat.beaten {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 16px 2px var(--gold-glow);
+  animation: bestpulse 1s ease-in-out infinite alternate;
+}
+.stat.beaten .k { color: var(--gold); }
+@keyframes bestpulse {
+  from { box-shadow: 0 0 0 1px var(--gold), 0 0 9px 1px var(--gold-glow); }
+  to { box-shadow: 0 0 0 1px var(--gold), 0 0 24px 6px var(--gold-glow); }
+}
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+button {
+  background: var(--btn-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 13px; cursor: pointer; font-size: 14px; font-weight: 600;
+  touch-action: manipulation;
+}
+button:hover { border-color: var(--neon); }
+button.primary { background: var(--neon); color: #ffffff; border-color: transparent; font-weight: 800; }
+:root[data-theme="dark"] button.primary { color: #032117; }
+button.big { font-size: 16px; padding: 12px 22px; border-radius: 12px; }
+
+.stage-wrap { max-width: 1060px; margin: 0 auto; padding: 16px 14px 4px; }
+.stage {
+  position: relative; border: 1px solid var(--line); border-radius: 16px;
+  overflow: hidden; box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+}
+canvas#game {
+  display: block; width: 100%;
+  height: min(70vh, 640px); min-height: 300px;
+  touch-action: none; user-select: none; -webkit-user-select: none;
+}
+@media (max-width: 520px) {
+  canvas#game { height: 62vh; min-height: 340px; }
+  h1 { font-size: 21px; }
+}
+/* Phones: the five HUD boxes share ONE row, always. The stats strip
+   takes the full topbar width and the boxes split it evenly, with
+   compact padding and type so nothing has to wrap. */
+@media (max-width: 760px) {
+  .topbar { gap: 8px; padding: 10px; }
+  .stats { width: 100%; gap: 5px; }
+  .stat { flex: 1 1 0; min-width: 0; padding: 5px 4px; border-radius: 8px; text-align: center; }
+  .stat .k { font-size: 9.5px; letter-spacing: .03em; }
+  .stat .v { font-size: 13.5px; }
+}
+
+.rug-banner {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--red); color: #fff; font-weight: 900; letter-spacing: .14em;
+  padding: 9px 20px; border-radius: 10px; font-size: clamp(14px, 3.4vw, 20px);
+  pointer-events: none; z-index: 4; white-space: nowrap;
+  animation: rugflash .28s steps(2, start) infinite;
+}
+@keyframes rugflash { 50% { opacity: .25; } }
+.paused-banner {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  font-weight: 800; letter-spacing: .08em; padding: 8px 16px; border-radius: 10px;
+  pointer-events: none; z-index: 4; white-space: nowrap; font-size: 14px;
+}
+
+/* Overlay cards are complete boxes inside the stage frame: centred,
+   a margin on every side (the overlay padding), full border and all
+   four rounded corners visible, nothing clipped by the frame. A card
+   can never be taller than the stage: if a card ever needs more room
+   it scrolls WITHIN its own border (generic safety below) — except
+   the game-over card, which is flex-built to genuinely fit and never
+   scrolls as a whole (see .card-over). */
+.overlay {
+  position: absolute; inset: 0; z-index: 3;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--overlay); padding: 14px;
+}
+.overlay .card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 18px 20px; max-width: 520px; width: 100%; text-align: left;
+  max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  backdrop-filter: blur(4px);
+}
+.overlay.stake { z-index: 5; }
+
+/* Game over: a flex column that genuinely fits the frame. Every block
+   is fixed-size except the PnL card, whose chart gives up height first
+   when the frame is tight. The card itself never scrolls and is never
+   clipped. Expanding the difficulty panel hides the chart (the
+   .settings-open rule below) so even that state fits whole. */
+.overlay .card-over {
+  display: flex; flex-direction: column;
+  overflow: hidden; padding: 12px 14px;
+}
+.overlay .card-over > * { flex: none; }
+.overlay .card-over > .pnl { flex: 0 1 auto; min-height: 0; }
+.overlay .card.card-over p { margin-bottom: 6px; }
+.overlay .card-over .settings-panel { margin: 8px 0; padding: 10px 12px; }
+.overlay .card-over.settings-open .pnl-chartwrap { display: none; }
+.overlay .card-over.settings-open { overflow-y: auto; }
+
+/* The death headline: one short line, small type, never wraps. */
+.over-title {
+  margin: 0 0 8px; font-size: 15.5px; font-weight: 800; letter-spacing: .01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Post-run PnL card: the run retold as a trade CHART, shareable.
+   Its own surface (true black at night, paper by day) with the run's
+   score as the hero, a chart of the score itself, and the verdict. */
+.pnl {
+  display: flex; flex-direction: column;
+  background: var(--pnl-bg); border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 13px; overflow: hidden;
+}
+.pnl-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.pnl-brand {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 900; font-size: 13px; letter-spacing: .08em;
+}
+.pnl-logo { width: 18px; height: 18px; flex: none; }
+.pnl-preset { color: var(--neon); font-weight: 800; font-size: 11.5px; letter-spacing: .1em; }
+.pnl-herorow {
+  /* The verdict pill gets its OWN line under the hero, never the same
+     row: with a 4-digit score the old side-by-side row ran out of
+     width and the pill painted over the hero's PTS. */
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px;
+}
+.pnl-hero {
+  font-size: 32px; font-weight: 900; line-height: 1.05; letter-spacing: .01em;
+  font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--score);
+}
+.pnl-hero .pnl-pts { font-size: 14px; font-weight: 800; color: var(--dim); margin-left: 5px; letter-spacing: .08em; }
+.pnl-verdict {
+  text-align: center;
+  font-weight: 800; font-size: 10px; letter-spacing: .05em; line-height: 1.3;
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+}
+.pnl-verdict.green { color: var(--best); border-color: var(--best); }
+.pnl-verdict.red { color: var(--red); border-color: var(--red); }
+.pnl-verdict.flat { color: var(--dim); }
+.pnl-sub {
+  display: flex; justify-content: space-between; gap: 10px; margin-top: 7px;
+}
+.pnl-substat .pk {
+  display: block; font-size: 9.5px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 1px;
+}
+.pnl-substat b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pnl-right { text-align: right; }
+.pnl-gainline { display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+.pnl-gain.green { color: var(--best); }
+.pnl-gain.red { color: var(--red); }
+.pnl-gain.flat { color: var(--ink); }
+.pnl-mult { color: var(--gold); font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+/* The stake settlement strip: what went in, what came out, and the
+   difference — full width under the time/gain row, toned by its own
+   result (up green, down red, break-even neutral). */
+.pnl-money {
+  margin-top: 6px; padding: 4px 8px; text-align: center;
+  background: var(--pnl-panel); border: 1px solid var(--line); border-radius: 9px;
+  font-size: 12.5px; font-weight: 800; letter-spacing: .02em;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.pnl-money.green { color: var(--best); }
+.pnl-money.red { color: var(--red); }
+.pnl-money.flat { color: var(--dim); }
+.pnl-chartwrap {
+  position: relative; flex: 0 1 76px; min-height: 38px; margin-top: 7px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--pnl-panel);
+  overflow: hidden;
+}
+.pnl-chart { display: block; width: 100%; height: 100%; }
+.pnl-peak {
+  /* Kept clear of the crash X, which is drawn into the chart's
+     top-right corner: the chip ends well left of it. */
+  position: absolute; top: 4px; right: 26px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .06em; color: var(--dim);
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+.pnl-tiles {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 7px;
+}
+.pnl-tile {
+  background: var(--pnl-panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 5px 2px 4px; text-align: center; color: var(--dim);
+}
+.pnl-tile svg { width: 14px; height: 14px; display: block; margin: 0 auto 1px; }
+.pnl-tile svg text { fill: var(--pnl-bg); }
+.pnl-tile b {
+  display: block; font-size: 13.5px; font-weight: 800; color: var(--ink);
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.pnl-tile span { display: block; font-size: 8.5px; text-transform: uppercase; letter-spacing: .05em; }
+.pnl-tile:nth-child(1) svg { color: var(--neon); }
+.pnl-tile:nth-child(2) svg { color: var(--gold); }
+.pnl-tile:nth-child(3) svg { color: var(--pink); }
+.pnl-tile:nth-child(4) svg { color: var(--red); }
+.pnl-foot {
+  margin: 6px 0 0 !important; text-align: center;
+  font-size: 11.5px; font-weight: 700; color: var(--dim);
+}
+.pnl-actions { display: flex; gap: 8px; margin-top: 8px; }
+.pnl-actions button { flex: 1; padding: 8px 10px; font-size: 13.5px; }
+
+/* Collapsible difficulty panels (both cards, closed by default):
+   one tappable row. */
+.settings-toggle {
+  width: 100%; background: none; border: none; padding: 0; cursor: pointer;
+  font: inherit; color: inherit; text-align: left;
+}
+.settings-toggle .preset-name { margin-left: auto; }
+.settings-toggle .chev { color: var(--dim); font-size: 12px; margin-left: 8px; }
+.settings-body { margin-top: 8px; }
+
+/* Pre-game stake card: pick how much rides on the run. The amount
+   sits big between the ladder steppers; the chips below are the same
+   ladder, and chip and stepper never disagree. */
+.stake-card { text-align: center; }
+.stake-card h2 { font-size: 19px; }
+.stake-amountrow {
+  display: flex; align-items: center; justify-content: center; gap: 18px; margin: 8px 0 2px;
+}
+.stake-amount {
+  font-size: 42px; font-weight: 900; line-height: 1; color: var(--score);
+  font-variant-numeric: tabular-nums; min-width: 128px;
+}
+.stake-step {
+  width: 42px; height: 42px; border-radius: 50%; padding: 0; flex: none;
+  font-size: 22px; font-weight: 900; line-height: 1;
+}
+.stake-step:disabled { opacity: .3; cursor: default; }
+.stake-step:disabled:hover { border-color: var(--line); }
+.stake-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
+.stake-chip { padding: 8px 4px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stake-chip.active { border-color: var(--neon); color: var(--neon); box-shadow: inset 0 0 0 1px var(--neon); }
+.stake-ape { width: 100%; }
+.stake-backrow { margin: 8px 0 2px !important; }
+.stake-back {
+  background: none; border: none; padding: 2px 6px; cursor: pointer;
+  color: var(--dim); font-size: 13.5px; font-weight: 700; text-decoration: underline;
+}
+.stake-back:hover { color: var(--ink); }
+.settings-panel {
+  margin: 12px 0; padding: 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--panel);
+}
+.settings-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--dim); margin-bottom: 8px;
+}
+.preset-name { color: var(--neon); font-size: 13px; }
+.chips { display: flex; gap: 6px; margin-bottom: 6px; }
+.chip { flex: 1; padding: 7px 4px; font-size: 13px; }
+.chip.active { border-color: var(--neon); color: var(--neon); box-shadow: inset 0 0 0 1px var(--neon); }
+.slider-row {
+  display: grid; grid-template-columns: 58px 1fr 46px; align-items: center;
+  gap: 8px; font-size: 13px; color: var(--dim); margin-top: 7px;
+}
+.slider-row input[type="range"] { width: 100%; accent-color: var(--neon); }
+.slider-val { font-weight: 800; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+.overlay .card p { margin: 0 0 10px; }
+.overlay .final { font-size: 19px; }
+.orb-dot {
+  display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--gold); box-shadow: 0 0 8px var(--gold); vertical-align: baseline;
+}
+.warn-text { color: var(--red); font-weight: 800; }
+
+.toast { min-height: 22px; margin: 10px 2px 0; color: var(--gold); font-size: 14.5px; font-weight: 700; }
+.panel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; margin: 12px 0 18px;
+}
+/* The help card stays compact so the stage gets the screen: smaller
+   type and a short list window that scrolls internally. All five
+   instructions are still there — they just live behind the scroll. */
+.howto { padding: 9px 14px 11px; margin: 10px 0 14px; }
+.howto h2 { font-size: 14px; margin-bottom: 4px; }
+.howto ol {
+  margin: 0; padding-left: 17px; color: var(--dim); font-size: 12.5px; line-height: 1.4;
+  max-height: 138px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px;
+}
+.howto li { margin-bottom: 4px; }
+.howto li:last-child { margin-bottom: 0; }
+footer { max-width: 1060px; margin: 0 auto; padding: 0 14px 26px; color: var(--dim); font-size: 13px; }
+code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
+
+/* Small screens: the whole game is one 100dvh column — compact
+   header, the HUD row, a stage that flexes to whatever height is
+   actually visible on the phone, and a compact help strip. Nothing
+   lives below a fold, so the game-over stack (PnL card, collapsed
+   difficulty row, share buttons, run it back) always fits inside the
+   real stage instead of being measured against a taller ideal one. */
+@media (max-width: 760px) {
+  body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+  .brand .tagline { display: none; }
+  .logo { width: 32px; height: 32px; }
+  h1 { font-size: 20px; }
+  .actions button { padding: 6px 9px; font-size: 12.5px; }
+  .stage-wrap {
+    flex: 1 1 auto; min-height: 0; width: 100%;
+    display: flex; flex-direction: column; padding: 10px 10px 6px;
+  }
+  .stage { flex: 1 1 auto; min-height: 0; }
+  canvas#game { height: 100%; min-height: 0; }
+  .toast { flex: none; min-height: 18px; margin: 4px 2px 0; font-size: 13px; }
+  .howto { flex: none; margin: 6px 0 2px; padding: 7px 12px 8px; }
+  .howto h2 { font-size: 13px; margin-bottom: 2px; }
+  .howto ol { max-height: 60px; }
+  footer { display: none; }
+}
+
+/* Short phone viewports — browser chrome visible, ~660-700px of real
+   height: the game-over stack must still fit whole inside the stage.
+   The PnL card gives up padding, hero size and chart height (never
+   content: all four tiles and the footer stay on the card), the rows
+   around it tighten, and the overlay keeps a smaller margin. */
+@media (max-width: 760px) and (max-height: 740px) {
+  .overlay { padding: 8px; }
+  .overlay .card { padding: 12px 14px; }
+  .overlay .card-over { padding: 7px 10px; }
+  .over-title { font-size: 14px; margin-bottom: 4px; }
+  .pnl { padding: 6px 10px; }
+  .pnl-brand { font-size: 12px; }
+  .pnl-logo { width: 15px; height: 15px; }
+  .pnl-herorow { margin-top: 2px; gap: 3px; }
+  .pnl-hero { font-size: 22px; }
+  .pnl-verdict { font-size: 9.5px; padding: 2px 7px; }
+  .pnl-sub { margin-top: 3px; }
+  .pnl-substat .pk { font-size: 8.5px; }
+  .pnl-substat b { font-size: 13.5px; }
+  .pnl-money { margin-top: 3px; padding: 1px 6px; font-size: 11.5px; }
+  .stake-amount { font-size: 32px; min-width: 104px; }
+  .stake-step { width: 36px; height: 36px; font-size: 19px; }
+  .stake-chips { margin: 7px 0; }
+  .stake-chip { padding: 6px 4px; }
+  .pnl-chartwrap { flex-basis: 20px; min-height: 6px; margin-top: 4px; }
+  .pnl-tiles { margin-top: 2px; gap: 4px; }
+  .pnl-tile { padding: 3px 2px 2px; }
+  .pnl-tile svg { width: 11px; height: 11px; }
+  .pnl-tile b { font-size: 12px; }
+  .pnl-tile span { font-size: 7.5px; }
+  .pnl-foot { margin-top: 2px !important; font-size: 10.5px; }
+  .pnl-actions { margin-top: 5px; }
+  .pnl-actions button { padding: 5px 8px; font-size: 12.5px; }
+  .overlay .card-over .settings-panel { margin: 5px 0; padding: 5px 10px; }
+  button.big { padding: 8px 18px; font-size: 15px; }
+}
+
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+      <path d="M24 3c5 5 8 12 8 20l-8 9-8-9c0-8 3-15 8-20z" fill="var(--logo-body)"/>
+      <circle cx="24" cy="17" r="4.5" fill="var(--logo-win)"/>
+      <path d="M16 26l-6 8 8-2M32 26l6 8-8-2" stroke="var(--logo-fin)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M20 36c1.5 3 6.5 3 8 0l-4 9z" fill="var(--logo-flame)"/>
+    </svg>
+    <div>
+      <h1>PUMP <span class="rider">RIDER</span></h1>
+      <p class="tagline">Ride the memecoin chart. Hold to pump, let go to fall. Do not kiss the line.</p>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="k">Score</span><span class="v" id="stat-score">0</span></div>
+    <div class="stat" id="stat-best-box"><span class="k">Best</span><span class="v" id="stat-best">0</span></div>
+    <div class="stat"><span class="k">Combo</span><span class="v" id="stat-combo">—</span></div>
+    <div class="stat"><span class="k">Orbs</span><span class="v" id="stat-orbs">0</span></div>
+    <div class="stat"><span class="k">Speed</span><span class="v" id="stat-speed">1.0x</span></div>
+  </div>
+  <div class="actions">
+    <button id="btn-pause" title="Pause (P)">Pause</button>
+    <button id="btn-sound" title="Toggle sound (M)">Sound: on</button>
+    <button id="btn-theme" title="Toggle dark / light theme">Theme: dark</button>
+  </div>
+</header>
+
+<main class="stage-wrap">
+  <div id="stage" class="stage">
+    <canvas id="game"></canvas>
+    <div id="rug-banner" class="rug-banner hidden">RUG PULL INBOUND</div>
+    <div id="paused-banner" class="paused-banner hidden">PAUSED — press P to ride on</div>
+
+    <div id="overlay-start" class="overlay">
+      <div class="card">
+        <h2>Ride the chart</h2>
+        <p>hold to pump. let go to fall. do not kiss the line.</p>
+        <div class="settings-panel">
+          <button type="button" class="settings-head settings-toggle" id="btn-start-settings" aria-expanded="false">
+            <span>Difficulty</span><span class="preset-name">Chill</span><span class="chev" aria-hidden="true">▸</span>
+          </button>
+          <div class="settings-body hidden" id="start-settings-body">
+            <div class="chips">
+              <button type="button" class="chip" data-preset="chill">Chill</button>
+              <button type="button" class="chip" data-preset="classic">Classic</button>
+              <button type="button" class="chip" data-preset="degen">Degen</button>
+            </div>
+            <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
+            <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
+            <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+          </div>
+        </div>
+        <button id="btn-start" class="primary big">Start riding</button>
+      </div>
+    </div>
+
+    <div id="overlay-stake" class="overlay stake hidden">
+      <div class="card stake-card">
+        <h2>how much are you willing to risk, ser?</h2>
+        <div class="stake-amountrow">
+          <button type="button" id="btn-stake-minus" class="stake-step" aria-label="One step down the stake ladder">−</button>
+          <div class="stake-amount" id="stake-amount">$10</div>
+          <button type="button" id="btn-stake-plus" class="stake-step" aria-label="One step up the stake ladder">+</button>
+        </div>
+        <div class="stake-chips" id="stake-chips">
+          <button type="button" class="stake-chip" data-stake="1">$1</button>
+          <button type="button" class="stake-chip" data-stake="5">$5</button>
+          <button type="button" class="stake-chip" data-stake="10">$10</button>
+          <button type="button" class="stake-chip" data-stake="50">$50</button>
+          <button type="button" class="stake-chip" data-stake="100">$100</button>
+          <button type="button" class="stake-chip" data-stake="1000">$1,000</button>
+        </div>
+        <p class="dim small">every 100 pts is 1x on your bag.</p>
+        <button id="btn-ape" class="primary big stake-ape">APE IN $10</button>
+        <p class="stake-backrow"><button type="button" id="btn-ngmi" class="stake-back">ngmi</button></p>
+        <p class="dim small">Enter or Space apes in too.</p>
+      </div>
+    </div>
+
+    <div id="overlay-over" class="overlay hidden">
+      <div class="card card-over">
+        <h2 id="over-title" class="over-title">kissed the line.</h2>
+        <div class="pnl" id="pnl-card">
+          <div class="pnl-head">
+            <span class="pnl-brand">
+              <svg class="pnl-logo" viewBox="0 0 48 48" aria-hidden="true">
+                <path d="M24 3c5 5 8 12 8 20l-8 9-8-9c0-8 3-15 8-20z" fill="var(--logo-body)"/>
+                <circle cx="24" cy="17" r="4.5" fill="var(--logo-win)"/>
+                <path d="M16 26l-6 8 8-2M32 26l6 8-8-2" stroke="var(--logo-fin)" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+                <path d="M20 36c1.5 3 6.5 3 8 0l-4 9z" fill="var(--logo-flame)"/>
+              </svg>
+              PUMP RIDER
+            </span>
+            <span class="pnl-preset" id="pnl-preset">CHILL</span>
+          </div>
+          <div class="pnl-herorow">
+            <div class="pnl-hero"><span id="pnl-score">+0</span><span class="pnl-pts">PTS</span></div>
+            <span class="pnl-verdict flat" id="pnl-verdict">FIRST TRADE ON THE BOOKS</span>
+          </div>
+          <div class="pnl-sub">
+            <div class="pnl-substat">
+              <span class="pk">TIME IN TRADE</span>
+              <b id="pnl-time">0.0s</b>
+            </div>
+            <div class="pnl-substat pnl-right">
+              <span class="pk">GAIN</span>
+              <span class="pnl-gainline"><b id="pnl-gain" class="pnl-gain flat">FIRST TRADE</b><span class="pnl-mult" id="pnl-mult">x1 combo</span></span>
+            </div>
+          </div>
+          <div class="pnl-money flat" id="pnl-money">IN $10 → OUT $0 · −$10</div>
+          <div class="pnl-chartwrap">
+            <svg class="pnl-chart" id="pnl-chart" viewBox="0 0 320 110" preserveAspectRatio="none" aria-label="Chart of this run's score"></svg>
+            <span class="pnl-peak" id="pnl-peak">HIGH 0</span>
+          </div>
+          <div class="pnl-tiles">
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 13V8M6.5 13V5M11 13V6.5M14.5 13V3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <b id="pnl-tile-combo">x1</b><span>Best combo</span>
+            </div>
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5" fill="currentColor"/><text x="8" y="11" text-anchor="middle" font-size="8" font-weight="800">N</text></svg>
+              <b id="pnl-tile-orbs">0</b><span>Orbs</span>
+            </div>
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 9c2.5 0 2.5-4 5-4s2.5 4 5 4 2.5-4 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+              <b id="pnl-tile-near">0</b><span>NEAR calls</span>
+            </div>
+            <div class="pnl-tile">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 4h6v6h8" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <b id="pnl-tile-rugs">0</b><span>Rugs survived</span>
+            </div>
+          </div>
+          <p class="pnl-foot" id="pnl-foot">the pump was NEAR.</p>
+        </div>
+        <div class="pnl-actions">
+          <button type="button" id="btn-download">Download card</button>
+          <button type="button" id="btn-share">Share on X</button>
+        </div>
+        <div class="settings-panel" id="over-settings">
+          <button type="button" class="settings-head settings-toggle" id="btn-over-settings" aria-expanded="false">
+            <span>Difficulty</span><span class="preset-name">Chill</span><span class="chev" aria-hidden="true">▸</span>
+          </button>
+          <div class="settings-body hidden" id="over-settings-body">
+            <div class="chips">
+              <button type="button" class="chip" data-preset="chill">Chill</button>
+              <button type="button" class="chip" data-preset="classic">Classic</button>
+              <button type="button" class="chip" data-preset="degen">Degen</button>
+            </div>
+            <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
+            <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
+            <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+          </div>
+        </div>
+        <button id="btn-again" class="primary big">run it back</button>
+      </div>
+    </div>
+  </div>
+
+  <p id="toast" class="toast" role="status"></p>
+
+  <section class="howto panel">
+    <h2>How to ride</h2>
+    <ol>
+      <li>One button. Hold to climb, release to dive. Feather it — momentum is everything.</li>
+      <li>Orbs pay 20 points times your combo multiplier. Chain them without missing to reach x4. One miss and the combo is gone.</li>
+      <li>Close calls pay +15: pass within a whisker of the chart without touching it. Risky, repeatable, addictive.</li>
+      <li>Rug pulls are telegraphed: warning first, then the cliff, then the dead-cat bounce. The bounce is the dangerous part — it comes back up at you.</li>
+      <li>The chart scrolls faster the longer you live. Your score is distance + orbs + bonuses.</li>
+    </ol>
+  </section>
+</main>
+
+<footer>
+  <p>Built for NEAR HACKATHON 2026, Games track. A fully local arcade game:
+  no wallet, no network, no dependencies. Open <code>dist/pump-rider.html</code> and ride. See README.</p>
+</footer>
+
+<script>
+;(() => {
+'use strict';
+// engine.js — ALL the rules of Pump Rider, in one pure ES module.
+// No DOM, no canvas, no timers: the same seed and the same inputs always
+// produce the same run, which is what the tests in test/ rely on.
+//
+// THE GAME
+// You ride a rocket above a live memecoin price chart. The chart is the
+// ground: touch it and the run ends. Hold to pump (thrust up), release to
+// fall. NEAR orbs float above the chart — grab them back to back to build
+// a combo multiplier. Every so often the coin rugs: a warning flashes,
+// the chart cliff-drops, then dead-cat-bounces back up, hard. Skim the
+// chart for close-call bonuses. Survive a rug for a bigger one.
+//
+// COORDINATES
+// World units, y UP. The chart height at world x is terrainHeightAt().
+// The player must keep y - PLAYER_R above it. The world is WORLD_H tall.
+//
+// ---------------------------------------------------------------------
+
+// World + physics ------------------------------------------------------------
+const WORLD_H = 640; // total world height in units
+const CEILING = 598; // soft sky: the rocket cannot climb past this
+const PLAYER_R = 13; // rocket collision radius
+const GRAVITY = 1500; // downward accel, units/s^2
+const THRUST = 2750; // upward accel while holding (net +1250)
+const MAX_VY = 545; // vertical speed clamp
+const LAUNCH_GRACE_TIME = 1.0; // seconds of eased gravity after spawn
+const BASE_SPEED = 252; // starting scroll speed, units/s
+const MAX_SPEED = 540; // scroll speed cap
+const SPEED_RAMP = 6.5; // scroll speed gained per second
+
+// Terrain --------------------------------------------------------------------
+const SEG_DX = 90; // control-point spacing along x
+const TERRAIN_MIN = 88;
+const TERRAIN_MAX = 425;
+const TERRAIN_START = 232; // flat-ish launch pad height
+const FLAT_POINTS = 5; // safe runway: first points stay at START
+
+// Scoring --------------------------------------------------------------------
+const SCORE_PER_UNIT = 12; // 1 point per 12 units travelled
+const ORB_BASE = 20; // orb points at x1 combo
+const COMBO_STEP = 0.5; // multiplier growth per consecutive orb
+const COMBO_CAP = 4; // multiplier ceiling
+const CLOSE_BONUS = 15; // near-miss bonus
+const CLOSE_DIST = 26; // gap (above the chart) that counts as close
+const CLOSE_COOLDOWN = 1.1; // seconds between close-call awards
+const RUG_BONUS = 150; // surviving a full rug event
+
+// Orbs -----------------------------------------------------------------------
+const ORB_COLLECT_DX = 27;
+const ORB_COLLECT_DY = 31;
+const ORB_MISS_DX = 36; // orb this far behind you uncollected = missed
+
+// Difficulty -------------------------------------------------------------------
+// Settings are MULTIPLIERS on the shipped constants above, passed to
+// createGame(seed, { settings }). "classic" is exactly the original feel
+// (all 1s). "thrust" scales the NET climb acceleration (THRUST - GRAVITY),
+// so pumping always out-climbs gravity no matter how the sliders are set.
+// Same seed + same settings + same inputs = same run, always.
+const PRESETS = {
+  chill: { speedScale: 0.7, gravity: 0.8, thrust: 0.85 },
+  classic: { speedScale: 1, gravity: 1, thrust: 1 },
+  degen: { speedScale: 1.3, gravity: 1.25, thrust: 1.25 },
+};
+
+// Rug pulls ------------------------------------------------------------------
+const RUG_WARN_TIME = 1.1; // seconds of flashing warning first
+const RUG_ACTIVE_TIME = 4.2; // seconds from drop to "survived"
+const CLIFF_LEN = 980; // world units over which a cliff plays out
+
+const LOOKAHEAD = 1600; // terrain/orbs generated this far ahead of the player
+
+// Seeded RNG -----------------------------------------------------------------
+// mulberry32: tiny, fast, deterministic. One stream per game, consumed in
+// a fixed order (terrain points, then orbs, then rug rolls), so a seed
+// fully determines a run.
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function next() {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function hashSeed(seed) {
+  if (typeof seed === 'number' && Number.isFinite(seed)) return seed >>> 0;
+  const s = String(seed);
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+// Game construction ------------------------------------------------------------
+function createGame(seed, opts = {}) {
+  const rng = mulberry32(hashSeed(seed));
+  const st = opts.settings || {};
+  const gravity = GRAVITY * (st.gravity ?? 1);
+  const netThrust = (THRUST - GRAVITY) * (st.thrust ?? 1);
+  const speedScale = st.speedScale ?? 1;
+  const state = {
+    seed,
+    rng,
+    rugsEnabled: opts.rugs !== false,
+    gravity, // effective downward accel for this run
+    netThrust, // effective upward accel while holding, net of gravity
+    speedScale,
+    time: 0,
+    x: 60,
+    y: 0, // set below, once the launch pad exists
+    vy: 0,
+    speed: BASE_SPEED * speedScale,
+    pts: [], // terrain control-point heights, index * SEG_DX = x
+    orbs: [], // {x, y, collected, missed}
+    nextOrbX: 520,
+    cliffs: [], // {x, depth} rug cliff-drops baked into the terrain query
+    combo: 0,
+    multiplier: 1,
+    orbScore: 0,
+    bonusScore: 0,
+    orbsCollected: 0,
+    score: 0,
+    crashed: false,
+    closeCd: 0,
+    rugPhase: 'idle', // idle -> warning -> active -> idle
+    rugT: 0, // time left in the current rug phase
+    nextRugIn: 13 + rng() * 9, // first rug lands 13-22s in
+  };
+  ensurePoints(state, Math.floor((state.x + LOOKAHEAD) / SEG_DX) + 1);
+  ensureOrbs(state, state.x + LOOKAHEAD);
+  state.y = terrainHeightAt(state, state.x) + 148;
+  return state;
+}
+
+// Terrain generation -----------------------------------------------------------
+// Control points form a seeded random walk with occasional violent
+// pump/dump jumps, because this is a memecoin chart, not a golf course.
+function genPoint(state, idx) {
+  if (idx < FLAT_POINTS) return TERRAIN_START;
+  const prev = state.pts[idx - 1];
+  const r = state.rng();
+  let step;
+  if (r < 0.09) step = (95 + state.rng() * 55) * (state.rng() < 0.5 ? -1 : 1); // violent move
+  else step = (state.rng() * 2 - 1) * 64;
+  return Math.min(TERRAIN_MAX, Math.max(TERRAIN_MIN, prev + step));
+}
+
+function ensurePoints(state, uptoIdx) {
+  while (state.pts.length <= uptoIdx) {
+    state.pts.push(genPoint(state, state.pts.length));
+  }
+}
+
+// Orbs are seeded off the same stream, always generated in increasing-x
+// order from their own frontier, so a seed reproduces the exact same orb
+// field. Kept separate from ensurePoints because terrain queries recurse
+// into ensurePoints and must never consume orb randomness out of order.
+function ensureOrbs(state, uptoX) {
+  while (state.nextOrbX < uptoX) {
+    const ox = state.nextOrbX + state.rng() * 110;
+    const base = terrainBaseHeightAt(state, ox);
+    const oy = Math.min(CEILING - 42, base + 74 + state.rng() * 118);
+    state.orbs.push({ x: ox, y: oy, collected: false, missed: false });
+    state.nextOrbX = ox + 265 + state.rng() * 230;
+  }
+}
+
+// Smooth (smoothstep) interpolation between control points, cliffs excluded.
+function terrainBaseHeightAt(state, x) {
+  const i = Math.max(0, Math.floor(x / SEG_DX));
+  ensurePoints(state, i + 1);
+  const f = Math.min(1, Math.max(0, (x - i * SEG_DX) / SEG_DX));
+  const s = f * f * (3 - 2 * f);
+  return state.pts[i] + (state.pts[i + 1] - state.pts[i]) * s;
+}
+
+// A rug cliff: the chart plunges by `depth`, sits in the crater, then
+// dead-cat-bounces ABOVE its old line before settling. Piecewise keyframes
+// over CLIFF_LEN world units, smoothstepped between keys.
+const CLIFF_KEYS = [
+  [0.0, 0],
+  [0.07, -1],
+  [0.42, -1],
+  [0.68, 0.3],
+  [1.0, 0],
+];
+function cliffOffset(cliff, x) {
+  const s = (x - cliff.x) / CLIFF_LEN;
+  if (s <= 0 || s >= 1) return 0;
+  for (let k = 0; k < CLIFF_KEYS.length - 1; k++) {
+    const [s0, v0] = CLIFF_KEYS[k];
+    const [s1, v1] = CLIFF_KEYS[k + 1];
+    if (s >= s0 && s <= s1) {
+      const f = (s - s0) / (s1 - s0);
+      const sm = f * f * (3 - 2 * f);
+      return cliff.depth * (v0 + (v1 - v0) * sm);
+    }
+  }
+  return 0;
+}
+
+// The one terrain query everything (physics, rendering, tests) uses.
+function terrainHeightAt(state, x) {
+  let h = terrainBaseHeightAt(state, x);
+  for (const c of state.cliffs) {
+    if (x > c.x) h += cliffOffset(c, x);
+  }
+  return h;
+}
+
+// Launch grace -----------------------------------------------------------------
+// A fresh run spawns 148 units above the chart with zero vertical speed,
+// so at full gravity an idle rocket is dead in ~0.5s — before a first-time
+// player (especially on a phone) can even get a finger down. For the
+// first LAUNCH_GRACE_TIME seconds, gravity therefore eases in from zero
+// with a cubic ramp: the rocket effectively hovers, then sinks gently,
+// then falls for real. The window is the same for every preset and depends
+// only on state.time, so seed determinism is untouched. Thrust is NEVER
+// eased: the moment you hold, you climb at full power, from frame one.
+function gravityScaleAt(time) {
+  if (time >= LAUNCH_GRACE_TIME) return 1;
+  const s = Math.max(0, time / LAUNCH_GRACE_TIME);
+  return s * s * s;
+}
+
+// The step ---------------------------------------------------------------------
+// Advances the run by dt seconds. `thrust` is the one button. Returns the
+// events that happened this step, so the UI can play sounds and particles:
+//   orb {points, combo, multiplier, x, y}   closecall {gap}
+//   comboLost {}                            rugwarning {}
+//   rugdrop {depth}                         rugsurvived {}
+//   crash {x, y}
+function step(state, dt, thrust) {
+  if (state.crashed) return [];
+  dt = Math.min(dt, 0.05);
+  const events = [];
+  state.time += dt;
+
+  // Scroll: the chart flies at you, faster the longer you live.
+  state.speed = Math.min(
+    MAX_SPEED * state.speedScale,
+    (BASE_SPEED + state.time * SPEED_RAMP) * state.speedScale,
+  );
+  state.x += state.speed * dt;
+
+  // Vertical physics: hold to pump, release to fall. During the launch
+  // grace the fall is eased in (see gravityScaleAt); the pump is not.
+  const accel = thrust
+    ? state.netThrust
+    : -state.gravity * gravityScaleAt(state.time);
+  state.vy = Math.max(-MAX_VY, Math.min(MAX_VY, state.vy + accel * dt));
+  state.y += state.vy * dt;
+  if (state.y > CEILING) {
+    state.y = CEILING;
+    state.vy = Math.min(state.vy, 0);
+  }
+
+  ensurePoints(state, Math.floor((state.x + LOOKAHEAD) / SEG_DX) + 1);
+  ensureOrbs(state, state.x + LOOKAHEAD);
+
+  stepRug(state, dt, events);
+  stepOrbs(state, events);
+
+  // The chart is the ground. Touch it and the run is over.
+  const ground = terrainHeightAt(state, state.x);
+  const gap = state.y - PLAYER_R - ground;
+  state.closeCd -= dt;
+  if (gap <= 0) {
+    state.crashed = true;
+    state.y = ground + PLAYER_R;
+    events.push({ type: 'crash', x: state.x, y: state.y });
+  } else if (
+    gap < CLOSE_DIST &&
+    state.vy < 90 &&
+    state.closeCd <= 0 &&
+    state.time > 1.5
+  ) {
+    state.bonusScore += CLOSE_BONUS;
+    state.closeCd = CLOSE_COOLDOWN;
+    events.push({ type: 'closecall', gap });
+  }
+
+  // Prune orbs far behind so long runs stay lean.
+  if (state.orbs.length > 220) {
+    state.orbs = state.orbs.filter((o) => o.x > state.x - 260);
+  }
+
+  state.score =
+    Math.floor(state.x / SCORE_PER_UNIT) + state.orbScore + state.bonusScore;
+  return events;
+}
+
+function stepRug(state, dt, events) {
+  if (!state.rugsEnabled && state.rugPhase === 'idle') return;
+  if (state.rugPhase === 'idle') {
+    state.nextRugIn -= dt;
+    if (state.nextRugIn <= 0) {
+      state.rugPhase = 'warning';
+      state.rugT = RUG_WARN_TIME;
+      events.push({ type: 'rugwarning' });
+    }
+  } else if (state.rugPhase === 'warning') {
+    state.rugT -= dt;
+    if (state.rugT <= 0) {
+      // The cliff lands just ahead of the rocket, so you watch the chart
+      // fall out from under the run — and then bounce back up at you.
+      const cliff = {
+        x: state.x + state.speed * 0.55 + 130,
+        depth: 118 + state.rng() * 78,
+      };
+      state.cliffs.push(cliff);
+      state.rugPhase = 'active';
+      state.rugT = RUG_ACTIVE_TIME;
+      events.push({ type: 'rugdrop', depth: cliff.depth });
+    }
+  } else if (state.rugPhase === 'active') {
+    state.rugT -= dt;
+    if (state.rugT <= 0) {
+      state.rugPhase = 'idle';
+      state.nextRugIn = 15 + state.rng() * 13;
+      state.bonusScore += RUG_BONUS;
+      events.push({ type: 'rugsurvived' });
+    }
+  }
+}
+
+function stepOrbs(state, events) {
+  for (const orb of state.orbs) {
+    if (orb.collected || orb.missed) continue;
+    const dx = orb.x - state.x;
+    if (dx < -ORB_MISS_DX) {
+      orb.missed = true;
+      if (state.combo > 0) {
+        state.combo = 0;
+        state.multiplier = 1;
+        events.push({ type: 'comboLost' });
+      }
+      continue;
+    }
+    if (
+      Math.abs(dx) < ORB_COLLECT_DX &&
+      Math.abs(orb.y - state.y) < ORB_COLLECT_DY
+    ) {
+      orb.collected = true;
+      state.combo += 1;
+      state.multiplier = Math.min(
+        COMBO_CAP,
+        1 + (state.combo - 1) * COMBO_STEP,
+      );
+      const points = Math.round(ORB_BASE * state.multiplier);
+      state.orbScore += points;
+      state.orbsCollected += 1;
+      events.push({
+        type: 'orb',
+        points,
+        combo: state.combo,
+        multiplier: state.multiplier,
+        x: orb.x,
+        y: orb.y,
+      });
+    }
+  }
+}
+
+
+// recap.js — the post-run PnL card data: a pure, DOM-free recorder that
+// turns one run of Pump Rider into a run summary (stats, a score-over-
+// time sample series, chart markers), plus the shareable "PnL card"
+// model the game-over screen renders, and the verdict that grades the
+// run against the player's previous one.
+//
+// The app feeds it the engine's own events (see engine.js step()) as
+// they happen and ticks it with the live state every frame; every
+// number on the card comes straight from the run — orbs counted are
+// orbs collected, the "high" is the highest score the run actually
+// reached, the duration is the engine clock at the crash, the chart is
+// the score the run actually posted, sampled as it climbed. Nothing
+// here invents a figure.
+//
+// The event log is capped (MAX_LOG_EVENTS): the oldest entries are
+// dropped first, so a marathon run cannot grow without bound. Samples
+// are capped too (MAX_SAMPLES): past the cap the sampling interval
+// doubles (decimation), so the series stays small while still ending
+// exactly at the crash — finish() always lands the final sample there.
+
+const MAX_LOG_EVENTS = 200;
+const MAX_SAMPLES = 720;
+const SAMPLE_EVERY = 0.25; // seconds between chart samples
+const LAST_RUN_KEY = 'pump-rider-last-run';
+
+// ------------------------------------------------------------------ stake
+// Before a run the player picks a stake from a fixed ladder of dollar
+// amounts. The stake turns the score into a bag: every 100 pts is 1x
+// on the stake, so payout = stake x score/100 and pnl = payout - stake.
+// Pure helpers — the stake card UI in app.js walks this same ladder.
+const STAKE_LADDER = [1, 5, 10, 50, 100, 1000];
+const DEFAULT_STAKE = 10;
+const STAKE_KEY = 'pump-rider-stake';
+
+function sanitizeStake(v) {
+  return STAKE_LADDER.includes(v) ? v : DEFAULT_STAKE;
+}
+function stakeIndexOf(amount) {
+  return STAKE_LADDER.indexOf(sanitizeStake(amount));
+}
+function stepStakeIndex(index, dir) {
+  return Math.min(STAKE_LADDER.length - 1, Math.max(0, index + Math.sign(dir)));
+}
+
+// The money a finished run made: the multiple is the score in
+// hundreds, payout and pnl in dollars, rounded to the cent so the
+// card's arithmetic adds up exactly as printed.
+function moneyFor(score, stake) {
+  const multiple = score / 100;
+  const payout = Math.round(stake * multiple * 100) / 100;
+  const pnl = Math.round((payout - stake) * 100) / 100;
+  return { multiple, payout, pnl };
+}
+
+// "$1,000" for whole dollars, "$10.81" when there are cents, always
+// with thousands separators.
+function fmtMoney(v) {
+  const a = Math.abs(v);
+  const fixed = Number.isInteger(a) ? String(a) : a.toFixed(2);
+  const [int, dec] = fixed.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `$${grouped}${dec ? `.${dec}` : ''}`;
+}
+
+// Signed money for the card strip: +$592 up, −$29 down (a real minus
+// sign, U+2212, never a hyphen), plain $0 at break-even.
+function fmtSignedMoney(v) {
+  if (v > 0) return `+${fmtMoney(v)}`;
+  if (v < 0) return `−${fmtMoney(v)}`;
+  return fmtMoney(0);
+}
+
+function fmtBagMultiple(m) {
+  return `${parseFloat(m.toFixed(2))}x`;
+}
+
+// Footer lines for the PnL card — our own pun set, rotated per run.
+const FOOTER_PUNS = [
+  'the pump was NEAR.',
+  'not financial advice. just vibes and gravity.',
+  'one button. infinite rugs.',
+  'gravity is the only dev you can trust.',
+];
+
+// Seconds -> "m:ss.d" trade-clock format for chart timestamps.
+function formatClock(t) {
+  const m = Math.floor(t / 60);
+  const s = t - m * 60;
+  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+}
+
+function createRunRecorder() {
+  const events = []; // { t, kind, text, tone, score } — tone: plain|good|bad|gold
+  let samples = []; // { t, score } — the run's score, sampled for the chart
+  let sampleEvery = SAMPLE_EVERY;
+  let lastSampleT = -Infinity;
+  let preset = '';
+  let stake = DEFAULT_STAKE;
+  let orbs = 0;
+  let closeCalls = 0;
+  let rugsSurvived = 0;
+  let bestCombo = 0;
+  let bestMultiplier = 1;
+  let peakScore = 0;
+
+  function push(t, kind, text, tone = 'plain', score = 0) {
+    events.push({ t, kind, text, tone, score });
+    if (events.length > MAX_LOG_EVENTS) {
+      events.splice(0, events.length - MAX_LOG_EVENTS);
+    }
+  }
+
+  function sample(t, score) {
+    samples.push({ t, score });
+    lastSampleT = t;
+    if (samples.length > MAX_SAMPLES) {
+      // Decimate: keep every other point and sample half as often from
+      // here on. The shape of the run survives; the array stays lean.
+      samples = samples.filter((_, i) => i % 2 === 0);
+      sampleEvery *= 2;
+    }
+  }
+
+  return {
+    events,
+    get samples() { return samples; },
+
+    // The run starts: the ape-in entry, stamped at t=0, and the first
+    // chart sample at the origin. The stake the player picked rides
+    // along so the finished summary can settle the bag.
+    begin(presetLabel, stakeAmount) {
+      preset = presetLabel;
+      stake = sanitizeStake(stakeAmount);
+      push(0, 'start', `aped in · ${presetLabel}. one button, no mercy.`, 'plain', 0);
+      sample(0, 0);
+    },
+
+    // Called by the app every frame of a live run: keeps the peak
+    // honest and lays down a chart sample every SAMPLE_EVERY seconds.
+    tick(state) {
+      peakScore = Math.max(peakScore, state.score);
+      if (state.time - lastSampleT >= sampleEvery) sample(state.time, state.score);
+    },
+
+    // The stored best fell mid-run (the app spots the crossing, since
+    // it owns the stored record; the recorder just writes it down).
+    noteNewBest(t, score) {
+      push(t, 'newbest', `NEW BEST ${score}. wagmi.`, 'gold', score);
+    },
+
+    // One engine event, with the live state for its timestamp/score.
+    // 'crash' is ignored here: finish() writes the exit line.
+    observe(ev, state) {
+      peakScore = Math.max(peakScore, state.score);
+      switch (ev.type) {
+        case 'orb':
+          orbs += 1;
+          bestCombo = Math.max(bestCombo, ev.combo);
+          bestMultiplier = Math.max(bestMultiplier, ev.multiplier);
+          push(
+            state.time, 'orb',
+            `orb clipped +${ev.points}${ev.multiplier > 1 ? ` · combo x${ev.multiplier}` : ''}`,
+            'good', state.score,
+          );
+          break;
+        case 'closecall':
+          closeCalls += 1;
+          push(state.time, 'closecall', 'that was NEAR! +15', 'good', state.score);
+          break;
+        case 'comboLost':
+          push(state.time, 'comboLost', 'combo fumbled. reset to x1.', 'plain', state.score);
+          break;
+        case 'rugwarning':
+          push(state.time, 'rugwarning', 'RUG PULL INBOUND', 'bad', state.score);
+          break;
+        case 'rugdrop':
+          push(state.time, 'rugdrop', 'rug pulled. the floor just left.', 'bad', state.score);
+          break;
+        case 'rugsurvived':
+          rugsSurvived += 1;
+          push(state.time, 'rugsurvived', 'not today ser +150', 'good', state.score);
+          break;
+        default:
+          break; // crash (see finish) and anything unknown: no entry
+      }
+    },
+
+    // The run is over: append the exit line, land the final chart
+    // sample exactly on the crash, and freeze the summary. The crash
+    // is the only way a run ends, and kissing the line is its only
+    // cause — so the exit line can say so honestly.
+    finish(state) {
+      peakScore = Math.max(peakScore, state.score);
+      const last = samples[samples.length - 1];
+      if (!last || last.t !== state.time || last.score !== state.score) {
+        samples.push({ t: state.time, score: state.score });
+      }
+      push(state.time, 'crash', `position closed · kissed the line at ${state.score}.`, 'bad', state.score);
+      return {
+        preset,
+        stake,
+        score: state.score,
+        peakScore,
+        orbs,
+        closeCalls,
+        rugsSurvived,
+        bestCombo,
+        bestMultiplier,
+        duration: state.time,
+        events,
+        samples,
+      };
+    },
+  };
+}
+
+// Grades a finished run. Green ("closed green") when the run set a new
+// best or beat the previous run's score; red when it did neither;
+// 'flat' for the very first run on the books (nothing to grade
+// against — a first run that also sets the best arrives as green via
+// isNewBest before it ever gets here).
+function verdictFor(summary, prev, isNewBest) {
+  const deltaVsPrev = prev ? summary.score - prev.score : null;
+  if (isNewBest) {
+    return { tone: 'green', label: 'CLOSED GREEN · NEW BEST', deltaVsPrev };
+  }
+  if (prev && deltaVsPrev > 0) {
+    return { tone: 'green', label: `CLOSED GREEN · +${deltaVsPrev} vs last run`, deltaVsPrev };
+  }
+  if (!prev) {
+    return { tone: 'flat', label: 'FIRST TRADE ON THE BOOKS', deltaVsPrev: null };
+  }
+  return { tone: 'red', label: `CLOSED RED · ${deltaVsPrev} vs last run`, deltaVsPrev };
+}
+
+// Signed percent of `score` against the previous run's score, or null
+// when there is nothing meaningful to divide by (no previous run, or a
+// previous run that scored zero — the card then falls back to the
+// absolute delta, which verdictFor already carries).
+function gainPctFor(score, prev) {
+  if (!prev || !(prev.score > 0)) return null;
+  return ((score - prev.score) / prev.score) * 100;
+}
+
+function fmtGainPct(pct) {
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
+}
+
+function fmtMultiplier(m) {
+  return `x${Number.isInteger(m) ? m.toFixed(0) : m}`;
+}
+
+// The share text, in the player's voice: all lowercase, no dash
+// punctuation. It opens with the stake settlement (the bag the run
+// turned), then the close, then the stats; the closing line follows
+// the verdict.
+function shareTextFor(summary, verdict, isNewBest) {
+  const closer = isNewBest
+    ? 'new best. wagmi.'
+    : verdict.tone === 'green'
+      ? 'the pump was near.'
+      : verdict.tone === 'red'
+        ? 'the line won this one. running it back.'
+        : 'first trade on the books.';
+  const orbBit = summary.orbs === 1 ? '1 orb clipped' : `${summary.orbs} orbs clipped`;
+  const stake = sanitizeStake(summary.stake);
+  const money = moneyFor(summary.score, stake);
+  return (
+    `turned ${fmtMoney(stake)} into ${fmtMoney(money.payout)} on pump rider, ${fmtBagMultiple(money.multiple)}. ` +
+    `closed +${summary.score} pts. ` +
+    `${summary.duration.toFixed(1)}s in trade, ${orbBit}, ` +
+    `best combo ${fmtMultiplier(summary.bestMultiplier)}. ${closer}`
+  );
+}
+
+// Everything the PnL card renders, derived from one finished run.
+// Pure: the DOM card and the PNG painter both draw from this model, so
+// the downloaded card can never disagree with the screen.
+function buildCardData(summary, prev, isNewBest) {
+  const verdict = verdictFor(summary, prev, isNewBest);
+  const gainPct = gainPctFor(summary.score, prev);
+  const gainText = !prev
+    ? 'FIRST TRADE'
+    : gainPct !== null
+      ? fmtGainPct(gainPct)
+      : `${verdict.deltaVsPrev >= 0 ? '+' : ''}${verdict.deltaVsPrev} pts vs last`;
+  // The stake settlement: independent of the verdict (which grades
+  // against the previous run), this grades the run against the bag
+  // that rode on it. A summary with no stake recorded — a run from
+  // before the stake card existed — settles at the default stake.
+  const stake = sanitizeStake(summary.stake);
+  const money = moneyFor(summary.score, stake);
+  const moneyTone = money.pnl > 0 ? 'green' : money.pnl < 0 ? 'red' : 'flat';
+  const moneyText = `IN ${fmtMoney(stake)} → OUT ${fmtMoney(money.payout)} · ${fmtSignedMoney(money.pnl)}`;
+  const footer = FOOTER_PUNS[
+    Math.abs(summary.score * 7 + summary.orbs * 13 + Math.floor(summary.duration)) % FOOTER_PUNS.length
+  ];
+  return {
+    preset: String(summary.preset || '').toUpperCase(),
+    score: summary.score,
+    heroText: `+${summary.score}`,
+    tone: verdict.tone,
+    verdictLabel: verdict.label,
+    isNewBest,
+    timeInTrade: summary.duration,
+    timeText: `${summary.duration.toFixed(1)}s`,
+    gainPct,
+    gainText,
+    bestMultiplier: summary.bestMultiplier,
+    multText: fmtMultiplier(summary.bestMultiplier),
+    stake,
+    multiple: money.multiple,
+    bagMultText: fmtBagMultiple(money.multiple),
+    payout: money.payout,
+    pnl: money.pnl,
+    moneyTone,
+    moneyText,
+    tiles: [
+      { key: 'combo', label: 'BEST COMBO', value: fmtMultiplier(summary.bestMultiplier) },
+      { key: 'orbs', label: 'ORBS', value: String(summary.orbs) },
+      { key: 'near', label: 'NEAR CALLS', value: String(summary.closeCalls) },
+      { key: 'rugs', label: 'RUGS SURVIVED', value: String(summary.rugsSurvived) },
+    ],
+    peakScore: summary.peakScore,
+    footer,
+    shareText: shareTextFor(summary, verdict, isNewBest),
+  };
+}
+
+// The chart, normalized to the unit square (x: 0..1 across the run's
+// duration, y: 0..1 up to the run's peak score) so any renderer — the
+// SVG on the card, the PNG painter — maps it onto its own box. Score
+// only ever climbs in this game, so the line always ends at the peak:
+// the crash point IS the high, exactly like the reference cards.
+function chartModel(summary) {
+  const dur = Math.max(summary.duration, 1e-6);
+  const peak = Math.max(summary.peakScore, 1);
+  const nx = (t) => Math.min(1, Math.max(0, t / dur));
+  const ny = (s) => Math.min(1, Math.max(0, s / peak));
+  const at = (t, s) => ({ x: nx(t), y: ny(s) });
+  return {
+    line: summary.samples.map((s) => at(s.t, s.score)),
+    orbs: summary.events.filter((e) => e.kind === 'orb').map((e) => at(e.t, e.score)),
+    rugs: summary.events.filter((e) => e.kind === 'rugsurvived').map((e) => at(e.t, e.score)),
+    crash: at(summary.duration, summary.score),
+    peakScore: summary.peakScore,
+    duration: summary.duration,
+  };
+}
+
+
+// app.js — the Pump Rider UI. All rules live in engine.js; this file
+// renders state to a canvas, forwards the one button, plays tiny synth
+// sounds, and owns the theme system.
+//
+// Themes: CSS variables under [data-theme] dress the page; the canvas
+// reads the matching palette from THEMES below. Resolution order:
+// ?theme= in the URL, then localStorage, then prefers-color-scheme.
+// The toggle button flips and persists. ?seed= pins the terrain seed
+// (demos, screenshots, shared runs); ?play=1 hides the start card over
+// the frozen menu scene.
+
+
+
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+
+// ---------------------------------------------------------------- themes
+const THEMES = {
+  dark: {
+    sky: ['#000000', '#000000', '#000000'],
+    grid: 'rgba(255,255,255,0.08)',
+    candleUp: 'rgba(0,255,163,0.10)',
+    candleDown: 'rgba(255,61,138,0.11)',
+    speckle: 'rgba(255,255,255,0.55)',
+    chart: '#00ffa3',
+    chartHi: '#8dffd9',
+    fillTop: 'rgba(0,255,163,0.30)',
+    fillBot: 'rgba(0,255,163,0.02)',
+    glow: 'rgba(0,255,163,0.55)',
+    cliff: '#ff5252',
+    orb: '#ffd23d',
+    orbCore: '#fff3b0',
+    orbInk: '#6b4e00',
+    body: '#f5f7ff',
+    fin: '#ff3d8a',
+    win: '#45d0ff',
+    flameO: '#ff9a3d',
+    flameY: '#ffd23d',
+    floaterStroke: 'rgba(0,0,0,0.75)',
+  },
+  light: {
+    sky: ['#fff9ec', '#fdeed3', '#fbe0ac'],
+    grid: 'rgba(22,33,60,0.10)',
+    candleUp: 'rgba(0,150,90,0.13)',
+    candleDown: 'rgba(224,36,115,0.13)',
+    speckle: 'rgba(146,110,40,0.35)',
+    chart: '#009e60',
+    chartHi: '#00c978',
+    fillTop: 'rgba(0,158,96,0.26)',
+    fillBot: 'rgba(0,158,96,0.03)',
+    glow: 'rgba(0,158,96,0.35)',
+    cliff: '#d92b2b',
+    orb: '#f59e0b',
+    orbCore: '#ffe066',
+    orbInk: '#6b4e00',
+    body: '#ffffff',
+    fin: '#e02473',
+    win: '#0e7fd8',
+    flameO: '#ff8a2a',
+    flameY: '#ffc93d',
+    floaterStroke: 'rgba(255,250,240,0.85)',
+  },
+};
+
+const THEME_KEY = 'pump-rider-theme';
+const BEST_KEY = 'pump-rider-best';
+const MUTE_KEY = 'pump-rider-muted';
+
+function store(key, value) {
+  try {
+    if (value === undefined) return localStorage.getItem(key);
+    localStorage.setItem(key, value);
+  } catch { return null; }
+}
+
+function resolveTheme() {
+  const q = params.get('theme');
+  if (q === 'dark' || q === 'light') return q;
+  const saved = store(THEME_KEY);
+  if (saved === 'dark' || saved === 'light') return saved;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches
+    ? 'light'
+    : 'dark';
+}
+
+let themeName = resolveTheme();
+function applyTheme() {
+  document.documentElement.dataset.theme = themeName;
+  $('btn-theme').textContent = `Theme: ${themeName}`;
+}
+function toggleTheme() {
+  themeName = themeName === 'dark' ? 'light' : 'dark';
+  store(THEME_KEY, themeName);
+  applyTheme();
+}
+
+// ---------------------------------------------------------------- settings
+// Difficulty: preset chips (Chill / Classic / Degen) + Speed / Pump /
+// Gravity sliders. Values are multipliers handed to the engine at run
+// start (engine PRESETS are the single source of truth for the chips).
+// The shipped feel was too quick, so the default preset is Chill.
+// Moving any slider flips the preset to Custom. All of it persists.
+const SETTINGS_KEY = 'pump-rider-settings';
+const SLIDER_KEYS = ['speed', 'pump', 'gravity'];
+const SLIDER_RANGES = { speed: [0.5, 1.5], pump: [0.5, 1.8], gravity: [0.5, 1.8] };
+
+function presetSettings(name) {
+  const p = PRESETS[name];
+  return { speed: p.speedScale, pump: p.thrust, gravity: p.gravity };
+}
+function clampSetting(key, v) {
+  const [lo, hi] = SLIDER_RANGES[key];
+  return Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : null;
+}
+function loadSettings() {
+  const fallback = { preset: 'chill', ...presetSettings('chill') };
+  try {
+    const raw = store(SETTINGS_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    const out = { preset: 'custom' };
+    for (const key of SLIDER_KEYS) {
+      const v = clampSetting(key, Number(parsed[key]));
+      if (v === null) return fallback;
+      out[key] = v;
+    }
+    if (parsed.preset && PRESETS[parsed.preset]) {
+      const p = presetSettings(parsed.preset);
+      if (SLIDER_KEYS.every((k) => Math.abs(p[k] - out[k]) < 1e-9)) out.preset = parsed.preset;
+    }
+    return out;
+  } catch { return fallback; }
+}
+
+let settings = loadSettings();
+function persistSettings() { store(SETTINGS_KEY, JSON.stringify(settings)); }
+function engineSettings() {
+  return { speedScale: settings.speed, thrust: settings.pump, gravity: settings.gravity };
+}
+function presetLabel() {
+  return settings.preset === 'custom'
+    ? 'Custom'
+    : settings.preset[0].toUpperCase() + settings.preset.slice(1);
+}
+function syncSettingsUI() {
+  const label = presetLabel();
+  document.querySelectorAll('.settings-panel').forEach((panel) => {
+    panel.querySelector('.preset-name').textContent = label;
+    panel.querySelectorAll('.chip').forEach((chip) => {
+      chip.classList.toggle('active', chip.dataset.preset === settings.preset);
+    });
+    panel.querySelectorAll('.js-slider').forEach((input) => {
+      input.value = settings[input.dataset.setting];
+    });
+    panel.querySelectorAll('.slider-val').forEach((el) => {
+      el.textContent = `${settings[el.dataset.val].toFixed(2)}x`;
+    });
+  });
+}
+function applyPreset(name) {
+  settings = { preset: name, ...presetSettings(name) };
+  persistSettings();
+  syncSettingsUI();
+}
+function wireSettings() {
+  document.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('click', () => applyPreset(chip.dataset.preset));
+  });
+  document.querySelectorAll('.js-slider').forEach((input) => {
+    input.addEventListener('input', () => {
+      settings[input.dataset.setting] = clampSetting(input.dataset.setting, parseFloat(input.value));
+      settings.preset = 'custom';
+      persistSettings();
+      syncSettingsUI();
+    });
+  });
+  syncSettingsUI();
+}
+
+// ---------------------------------------------------------------- stake
+// The pre-game stake: a fixed ladder of dollar amounts, picked on the
+// stake card between the start card and the run. The choice persists
+// across sessions; the run's PnL card settles it (every 100 pts is 1x
+// on the bag — the money math lives in recap.js with the card model).
+let stakeIndex = stakeIndexOf(Number(store(STAKE_KEY)));
+function currentStake() { return STAKE_LADDER[stakeIndex]; }
+function setStakeIndex(i) {
+  stakeIndex = Math.min(STAKE_LADDER.length - 1, Math.max(0, i));
+  store(STAKE_KEY, String(currentStake()));
+  syncStakeUI();
+}
+function syncStakeUI() {
+  const stake = currentStake();
+  $('stake-amount').textContent = fmtMoney(stake);
+  document.querySelectorAll('.stake-chip').forEach((chip) => {
+    chip.classList.toggle('active', Number(chip.dataset.stake) === stake);
+  });
+  $('btn-stake-minus').disabled = stakeIndex === 0;
+  $('btn-stake-plus').disabled = stakeIndex === STAKE_LADDER.length - 1;
+  $('btn-ape').textContent = `APE IN ${fmtMoney(stake)}`;
+}
+function wireStake() {
+  document.querySelectorAll('.stake-chip').forEach((chip) => {
+    chip.addEventListener('click', () => setStakeIndex(stakeIndexOf(Number(chip.dataset.stake))));
+  });
+  $('btn-stake-minus').addEventListener('click', () => setStakeIndex(stepStakeIndex(stakeIndex, -1)));
+  $('btn-stake-plus').addEventListener('click', () => setStakeIndex(stepStakeIndex(stakeIndex, 1)));
+  syncStakeUI();
+}
+
+// ---------------------------------------------------------------- audio
+// Tiny WebAudio synth. The context is created ONLY inside a user-gesture
+// handler (first press), per browser autoplay rules.
+let actx = null;
+let muted = store(MUTE_KEY) === '1';
+
+function ensureAudio() {
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { actx = null; }
+  }
+  if (actx && actx.state === 'suspended') actx.resume();
+}
+
+// The unlock must ride the FIRST gesture anywhere — a button tap, a key
+// press, a touch on the stage — not only presses that land on the game
+// surface: browsers only honour a resume issued inside a real gesture,
+// so a context created suspended stays silent until one of these fires.
+window.addEventListener('pointerdown', ensureAudio);
+window.addEventListener('touchstart', ensureAudio, { passive: true });
+window.addEventListener('keydown', ensureAudio);
+
+function tone(freq, dur, { type = 'sine', vol = 0.12, slideTo = null, delay = 0 } = {}) {
+  if (muted || !actx) return;
+  if (actx.state === 'suspended') actx.resume(); // a play attempt is also a chance to unlock
+  const t0 = actx.currentTime + delay;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.03);
+}
+
+function noiseBurst(dur = 0.35, vol = 0.22) {
+  if (muted || !actx) return;
+  if (actx.state === 'suspended') actx.resume(); // a play attempt is also a chance to unlock
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const src = actx.createBufferSource(); src.buffer = buf;
+  const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+  const g = actx.createGain(); g.gain.value = vol;
+  src.connect(f); f.connect(g); g.connect(actx.destination);
+  src.start();
+}
+
+const sfx = {
+  orb(combo) { tone(540 + combo * 45, 0.09, { type: 'square', vol: 0.05 }); tone(1080 + combo * 90, 0.08, { vol: 0.07, delay: 0.02 }); },
+  closecall() { tone(280, 0.13, { type: 'sawtooth', vol: 0.045, slideTo: 640 }); },
+  warn() { tone(880, 0.09, { type: 'square', vol: 0.06 }); tone(880, 0.09, { type: 'square', vol: 0.06, delay: 0.16 }); },
+  drop() { tone(720, 0.5, { type: 'sawtooth', vol: 0.07, slideTo: 55 }); },
+  survived() { tone(523, 0.1, { vol: 0.08 }); tone(784, 0.16, { vol: 0.08, delay: 0.09 }); },
+  comboLost() { tone(320, 0.14, { type: 'triangle', vol: 0.06, slideTo: 170 }); },
+  crash() { noiseBurst(); tone(130, 0.4, { vol: 0.22, slideTo: 38 }); },
+};
+
+// ---------------------------------------------------------------- state
+const canvas = $('game');
+const ctx = canvas.getContext('2d');
+const seedParam = params.get('seed');
+
+let G = null; // engine state
+let mode = 'demo'; // demo (frozen menu scene) | playing | over
+let paused = false;
+let thrustHeld = false;
+let stakeOpen = false; // the pre-game stake card is showing
+
+// Mirrors the UI state onto <body data-state> for tests and screenshots.
+function syncState() {
+  document.body.dataset.state = stakeOpen ? 'stake' : mode;
+}
+let particles = [];
+let floaters = [];
+let shake = 0;
+let crashAt = 0;
+let best = Number(store(BEST_KEY) || 0);
+let bestBeaten = false; // this run has crossed the stored best
+let lastHud = {};
+let recorder = null; // PnL recorder for the live run (recap.js)
+let lastSummary = null; // the most recent finished run's summary
+let lastCard = null; // the most recent finished run's PnL card model
+
+function newRun(seed) {
+  G = createGame(seed, { settings: engineSettings() });
+  particles = [];
+  floaters = [];
+  shake = 0;
+  bestBeaten = false;
+  $('stat-best-box').classList.remove('beaten');
+  paused = false;
+  $('paused-banner').classList.add('hidden');
+  $('rug-banner').classList.add('hidden');
+}
+
+function startGame() {
+  ensureAudio();
+  // Whatever is physically held down at this instant (the Space press
+  // that aped in, say) cannot thrust until it is released and pressed
+  // again — see the input section. Pointer-started runs snapshot an
+  // empty set, because a click only fires after its pointerup, so the
+  // player's first real hold of the run just works.
+  ignoredPointers = new Set(heldPointers);
+  ignoredKeys = new Set(heldKeys);
+  newRun(seedParam !== null ? seedParam : (Math.random() * 1e9) | 0);
+  recorder = createRunRecorder();
+  recorder.begin(presetLabel(), currentStake());
+  mode = 'playing';
+  $('overlay-start').classList.add('hidden');
+  $('overlay-over').classList.add('hidden');
+  syncState();
+}
+
+// Death headlines: one short line each, small type, never wraps.
+const OVER_LINES = ['kissed the line.', 'down bad.', 'rugged.', 'not NEAR enough.'];
+function gameOver() {
+  mode = 'over';
+  syncState();
+  crashAt = performance.now();
+  const isBest = bestBeaten || G.score > best;
+  if (isBest) { best = G.score; store(BEST_KEY, String(best)); }
+  $('over-title').textContent = isBest
+    ? 'new best. wagmi.'
+    : OVER_LINES[(Math.random() * OVER_LINES.length) | 0];
+  // PnL card: close the run's books, grade it against the previous
+  // run, remember it for next time, and render the card.
+  if (recorder) {
+    lastSummary = recorder.finish(G);
+    const prev = loadLastRun();
+    lastCard = buildCardData(lastSummary, prev, isBest);
+    store(LAST_RUN_KEY, JSON.stringify({
+      score: lastSummary.score,
+      orbs: lastSummary.orbs,
+      bestCombo: lastSummary.bestCombo,
+      duration: lastSummary.duration,
+    }));
+    renderPnlCard(lastCard, lastSummary);
+  }
+  setOverSettings(false); // difficulty starts collapsed on this card
+  setTimeout(() => {
+    if (mode !== 'over') return;
+    $('overlay-over').classList.remove('hidden');
+  }, 650);
+}
+
+// ---------------------------------------------------------------- PnL card
+function loadLastRun() {
+  try {
+    const raw = store(LAST_RUN_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && Number.isFinite(parsed.score) ? parsed : null;
+  } catch { return null; }
+}
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+// The run's own chart, drawn into the card's SVG: the score climbing
+// over time (from chartModel's unit-square points), a dashed line at
+// the peak, gold squares where orbs were clipped, a pink flag where a
+// rug was survived, and a red X where it ended.
+function renderPnlChart(svg, summary, tone) {
+  const T = THEMES[themeName];
+  // The verdict rides on the line itself: NEAR green up, red down.
+  const line = tone === 'green' ? '#00ec97' : tone === 'red' ? T.cliff : T.chart;
+  const m = chartModel(summary);
+  const W = 320; const H = 110;
+  const X0 = 7; const X1 = W - 7; const YT = 11; const YB = H - 6;
+  const px = (u) => X0 + u * (X1 - X0);
+  const py = (u) => YB - u * (YB - YT);
+  svg.textContent = '';
+  if (m.line.length < 2) return;
+  const pts = m.line.map((p) => `${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`);
+  // Dashed peak line, from the start to just short of the crash
+  // (score is monotonic, so the peak is the crash point, at the
+  // top-right): it stops before the X so the HIGH chip and the
+  // marker never fight over the corner.
+  if (m.peakScore > 0) {
+    svg.append(svgEl('line', {
+      x1: X0, y1: py(1), x2: px(m.crash.x) - 12, y2: py(1),
+      stroke: line, 'stroke-width': 1, 'stroke-dasharray': '4 4',
+      opacity: 0.55, 'vector-effect': 'non-scaling-stroke',
+    }));
+  }
+  svg.append(svgEl('path', {
+    d: `M${pts.join(' L')} L${px(m.crash.x).toFixed(1)},${YB} L${X0},${YB} Z`,
+    fill: line, 'fill-opacity': 0.16, stroke: 'none',
+  }));
+  svg.append(svgEl('path', {
+    d: `M${pts.join(' L')}`, fill: 'none', stroke: line,
+    'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+    'vector-effect': 'non-scaling-stroke',
+  }));
+  for (const o of m.orbs) {
+    svg.append(svgEl('rect', {
+      x: px(o.x) - 2.6, y: py(o.y) - 2.6, width: 5.2, height: 5.2, fill: T.orb,
+    }));
+  }
+  for (const r of m.rugs) {
+    const cx = px(r.x); const cy = py(r.y);
+    svg.append(svgEl('path', {
+      d: `M${cx},${cy - 6} L${cx + 4.6},${cy + 3.4} L${cx - 4.6},${cy + 3.4} Z`, fill: T.fin,
+    }));
+  }
+  const cx = px(m.crash.x); const cy = py(m.crash.y);
+  svg.append(svgEl('path', {
+    d: `M${cx - 4},${cy - 4} L${cx + 4},${cy + 4} M${cx + 4},${cy - 4} L${cx - 4},${cy + 4}`,
+    stroke: T.cliff, 'stroke-width': 2.2, 'stroke-linecap': 'round',
+    'vector-effect': 'non-scaling-stroke',
+  }));
+}
+
+function renderPnlCard(card, summary) {
+  $('pnl-preset').textContent = card.preset || 'CUSTOM';
+  // The hero score is always gold; the verdict is carried by the
+  // pill, the gain figure and the chart line, not the score.
+  $('pnl-score').textContent = card.heroText;
+  const verdict = $('pnl-verdict');
+  verdict.textContent = card.verdictLabel;
+  verdict.className = `pnl-verdict ${card.tone}`;
+  $('pnl-time').textContent = card.timeText;
+  const gain = $('pnl-gain');
+  gain.textContent = card.gainText;
+  gain.className = `pnl-gain ${card.tone}`;
+  $('pnl-mult').textContent = `${card.multText} combo`;
+  const money = $('pnl-money');
+  money.textContent = card.moneyText;
+  money.className = `pnl-money ${card.moneyTone}`;
+  $('pnl-peak').textContent = `HIGH ${card.peakScore}`;
+  for (const tile of card.tiles) {
+    $(`pnl-tile-${tile.key}`).textContent = tile.value;
+  }
+  $('pnl-foot').textContent = card.footer;
+  renderPnlChart($('pnl-chart'), summary, card.tone);
+}
+
+// ---------------------------------------------------------------- PNG painter
+// The Download button's card: the same layout as the on-screen PnL
+// card, painted onto a 1080x1080 canvas from the same card model, so
+// the file a player shares can never disagree with what they saw.
+const PNL_PAINT = {
+  dark: { bg: '#000000', panel: '#0d0d0d', ink: '#eef2ff', dim: '#9aa7d9', line: '#232323', green: '#00ffa3', red: '#ff5252', gold: '#ffd23d', pink: '#ff3d8a', chart: '#00ffa3', score: '#ffc837', best: '#00ec97' },
+  light: { bg: '#fffdf6', panel: '#fdf3dd', ink: '#16213c', dim: '#5d6a8c', line: '#e3d3ae', green: '#009e60', red: '#d92b2b', gold: '#d97706', pink: '#e02473', chart: '#009e60', score: '#b97e04', best: '#00875a' },
+};
+
+function rr(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+
+function renderPnlPng() {
+  if (!lastCard || !lastSummary) return null;
+  const P = PNL_PAINT[themeName];
+  const card = lastCard;
+  const toneColor = card.tone === 'green' ? P.best : card.tone === 'red' ? P.red : P.ink;
+  const cv = document.createElement('canvas');
+  cv.width = 1080; cv.height = 1080;
+  const c = cv.getContext('2d');
+  c.fillStyle = P.bg;
+  c.fillRect(0, 0, 1080, 1080);
+  rr(c, 28, 28, 1024, 1024, 36);
+  c.strokeStyle = P.line; c.lineWidth = 3; c.stroke();
+
+  // Header: a little rocket + the wordmark, preset on the right.
+  c.save();
+  c.translate(104, 96);
+  c.fillStyle = P.pink;
+  c.beginPath(); c.moveTo(-13, -8); c.lineTo(-26, -22); c.lineTo(-7, -15); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(-13, 8); c.lineTo(-26, 22); c.lineTo(-7, 15); c.closePath(); c.fill();
+  c.beginPath(); c.ellipse(0, 0, 24, 13, 0, 0, Math.PI * 2);
+  c.fillStyle = themeName === 'dark' ? '#f5f7ff' : '#ffffff'; c.fill();
+  c.beginPath(); c.arc(8, -2, 6, 0, Math.PI * 2);
+  c.fillStyle = '#45d0ff'; c.fill();
+  c.restore();
+  c.fillStyle = P.ink;
+  c.font = '900 46px system-ui, sans-serif';
+  c.textBaseline = 'middle';
+  c.fillText('PUMP RIDER', 148, 98);
+  c.font = '800 34px system-ui, sans-serif';
+  c.fillStyle = P.green;
+  const presetW = c.measureText(card.preset || 'CUSTOM').width;
+  c.fillText(card.preset || 'CUSTOM', 1008 - presetW, 98);
+
+  // Hero score (always gold, like the HUD). The verdict pill gets its
+  // OWN line under the hero, left-aligned, exactly as on screen: on
+  // the hero's row it ran out of width at 4-digit scores and painted
+  // over the PTS.
+  c.font = '900 148px system-ui, sans-serif';
+  c.fillStyle = P.score;
+  c.fillText(card.heroText, 72, 236);
+  const heroW = c.measureText(card.heroText).width;
+  c.font = '800 50px system-ui, sans-serif';
+  c.fillStyle = P.dim;
+  c.fillText('PTS', 84 + heroW, 256);
+  c.font = '800 27px system-ui, sans-serif';
+  const vW = c.measureText(card.verdictLabel).width + 44;
+  rr(c, 72, 294, vW, 58, 29);
+  c.strokeStyle = toneColor; c.lineWidth = 2.5; c.stroke();
+  c.fillStyle = toneColor;
+  c.fillText(card.verdictLabel, 94, 324);
+
+  // Sub stats: time in trade (left), gain + best combo (right).
+  c.font = '700 25px system-ui, sans-serif';
+  c.fillStyle = P.dim;
+  c.fillText('TIME IN TRADE', 72, 402);
+  const gainLabel = 'GAIN';
+  c.fillText(gainLabel, 1008 - c.measureText(gainLabel).width, 402);
+  c.font = '800 56px system-ui, sans-serif';
+  c.fillStyle = P.ink;
+  c.fillText(card.timeText, 72, 452);
+  const gainW = c.measureText(card.gainText).width;
+  c.fillStyle = toneColor;
+  c.fillText(card.gainText, 1008 - gainW, 452);
+  c.font = '800 30px system-ui, sans-serif';
+  c.fillStyle = P.gold;
+  const multText = `${card.multText} BEST COMBO`;
+  c.fillText(multText, 1008 - c.measureText(multText).width, 498);
+
+  // The stake settlement strip, same string and tone as on screen:
+  // what went in, what came out, and the difference.
+  rr(c, 72, 514, 936, 46, 12);
+  c.fillStyle = P.panel; c.fill();
+  c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
+  c.font = '800 29px system-ui, sans-serif';
+  c.fillStyle = card.moneyTone === 'green' ? P.best : card.moneyTone === 'red' ? P.red : P.dim;
+  const moneyW = c.measureText(card.moneyText).width;
+  c.fillText(card.moneyText, (1080 - moneyW) / 2, 538);
+
+  // The chart of the run itself.
+  const bx = 72; const by = 576; const bw = 936; const bh = 172;
+  rr(c, bx, by, bw, bh, 18);
+  c.fillStyle = P.panel; c.fill();
+  c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
+  const m = chartModel(lastSummary);
+  const chartColor = card.tone === 'green' ? P.best : card.tone === 'red' ? P.red : P.chart;
+  const X0 = bx + 20; const X1 = bx + bw - 20; const YT = by + 22; const YB = by + bh - 18;
+  const px = (u) => X0 + u * (X1 - X0);
+  const py = (u) => YB - u * (YB - YT);
+  if (m.line.length >= 2) {
+    c.save();
+    rr(c, bx, by, bw, bh, 18);
+    c.clip();
+    if (m.peakScore > 0) {
+      c.beginPath();
+      c.setLineDash([10, 9]);
+      c.moveTo(X0, py(1)); c.lineTo(px(m.crash.x) - 26, py(1)); // stops short of the crash X
+      c.strokeStyle = chartColor; c.lineWidth = 2; c.globalAlpha = 0.55; c.stroke();
+      c.setLineDash([]);
+      c.globalAlpha = 1;
+    }
+    c.beginPath();
+    m.line.forEach((p, i) => { if (i === 0) c.moveTo(px(p.x), py(p.y)); else c.lineTo(px(p.x), py(p.y)); });
+    c.lineTo(px(m.crash.x), YB); c.lineTo(X0, YB); c.closePath();
+    c.fillStyle = chartColor; c.globalAlpha = 0.15; c.fill();
+    c.globalAlpha = 1;
+    c.beginPath();
+    m.line.forEach((p, i) => { if (i === 0) c.moveTo(px(p.x), py(p.y)); else c.lineTo(px(p.x), py(p.y)); });
+    c.strokeStyle = chartColor; c.lineWidth = 5; c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke();
+    c.fillStyle = P.gold;
+    for (const o of m.orbs) c.fillRect(px(o.x) - 6, py(o.y) - 6, 12, 12);
+    c.fillStyle = P.pink;
+    for (const r of m.rugs) {
+      c.beginPath();
+      c.moveTo(px(r.x), py(r.y) - 13);
+      c.lineTo(px(r.x) + 10, py(r.y) + 8);
+      c.lineTo(px(r.x) - 10, py(r.y) + 8);
+      c.closePath(); c.fill();
+    }
+    c.beginPath();
+    c.moveTo(px(m.crash.x) - 10, py(m.crash.y) - 10); c.lineTo(px(m.crash.x) + 10, py(m.crash.y) + 10);
+    c.moveTo(px(m.crash.x) + 10, py(m.crash.y) - 10); c.lineTo(px(m.crash.x) - 10, py(m.crash.y) + 10);
+    c.strokeStyle = P.red; c.lineWidth = 6; c.stroke();
+    c.restore();
+    c.font = '800 25px system-ui, sans-serif';
+    c.fillStyle = P.dim;
+    const highText = `HIGH ${m.peakScore}`;
+    // Ends 30px left of the chart's right edge: the crash X owns the
+    // top-right corner and the label must never sit under it.
+    c.fillText(highText, X1 - 30 - c.measureText(highText).width, by + 36);
+  }
+
+  // Milestone tiles.
+  const tileY = 800; const tileH = 118; const gap = 18;
+  const tileW = (bw - gap * 3) / 4;
+  card.tiles.forEach((tile, i) => {
+    const tx = bx + i * (tileW + gap);
+    rr(c, tx, tileY, tileW, tileH, 16);
+    c.fillStyle = P.panel; c.fill();
+    c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
+    c.font = '800 50px system-ui, sans-serif';
+    c.fillStyle = P.ink;
+    const vw = c.measureText(tile.value).width;
+    c.fillText(tile.value, tx + (tileW - vw) / 2, tileY + 48);
+    c.font = '700 21px system-ui, sans-serif';
+    c.fillStyle = P.dim;
+    const lw = c.measureText(tile.label).width;
+    c.fillText(tile.label, tx + (tileW - lw) / 2, tileY + 90);
+  });
+
+  // Footer pun.
+  c.font = '700 31px system-ui, sans-serif';
+  c.fillStyle = P.dim;
+  const fw = c.measureText(card.footer).width;
+  c.fillText(card.footer, (1080 - fw) / 2, 992);
+
+  return cv.toDataURL('image/png');
+}
+
+function downloadPnl() {
+  const url = renderPnlPng();
+  if (!url) return;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'pump-rider-pnl.png';
+  document.body.append(a);
+  a.click();
+  a.remove();
+}
+
+function shareOnX() {
+  if (!lastCard) return;
+  const url = `https://x.com/intent/tweet?text=${encodeURIComponent(lastCard.shareText)}`;
+  window.open(url, '_blank', 'noopener');
+}
+
+// Difficulty panels are collapsible on BOTH cards and closed by
+// default: one row, tapped to open. Expanding the game-over one hides
+// the PnL chart via CSS, so the taller card still fits the stage.
+function setSettingsPanel(btn, body, open, onToggle) {
+  body.classList.toggle('hidden', !open);
+  btn.setAttribute('aria-expanded', String(open));
+  btn.querySelector('.chev').textContent = open ? '▾' : '▸';
+  if (onToggle) onToggle(open);
+}
+function setOverSettings(open) {
+  setSettingsPanel($('btn-over-settings'), $('over-settings-body'), open, (o) => {
+    $('overlay-over').querySelector('.card-over').classList.toggle('settings-open', o);
+  });
+}
+
+
+
+// ---------------------------------------------------------------- events
+function burst(wx, wy, colors, n = 16, power = 190) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = (0.3 + Math.random() * 0.7) * power;
+    particles.push({
+      wx, wy,
+      vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+      life: 0, max: 0.45 + Math.random() * 0.5,
+      size: 2 + Math.random() * 3.2,
+      color: colors[(Math.random() * colors.length) | 0],
+    });
+  }
+}
+function floater(wx, wy, text, color) {
+  floaters.push({ wx, wy, text, color, life: 0, max: 1.0 });
+}
+
+let toastTimer = null;
+function toast(text, ms = 2200) {
+  $('toast').textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('toast').textContent = ''; }, ms);
+}
+
+function handleEvents(events, T) {
+  for (const e of events) {
+    if (recorder) recorder.observe(e, G); // PnL log (crash is written by finish)
+    if (e.type === 'orb') {
+      sfx.orb(e.combo);
+      burst(e.x, e.y, [T.orb, T.orbCore, T.chart], 14, 160);
+      const wagmi = e.combo === 4 || Math.random() < 0.15;
+      floater(e.x, e.y + 26, wagmi ? `+${e.points} wagmi` : `+${e.points}${e.multiplier > 1 ? `  x${e.multiplier}` : ''}`, T.orb);
+    } else if (e.type === 'closecall') {
+      sfx.closecall();
+      burst(G.x, terrainHeightAt(G, G.x) + 6, [T.chartHi, T.chart], 8, 120);
+      floater(G.x, G.y + 30, 'that was NEAR! +15', T.chartHi);
+      shake = Math.max(shake, 2);
+    } else if (e.type === 'comboLost') {
+      sfx.comboLost();
+      floater(G.x, G.y + 30, 'combo lost', T.cliff);
+    } else if (e.type === 'rugwarning') {
+      sfx.warn();
+      const b = $('rug-banner');
+      b.textContent = 'RUG PULL INBOUND';
+      b.classList.remove('hidden');
+    } else if (e.type === 'rugdrop') {
+      sfx.drop();
+      const b = $('rug-banner');
+      b.textContent = 'RUG PULL!';
+      setTimeout(() => b.classList.add('hidden'), 900);
+      shake = Math.max(shake, 6);
+    } else if (e.type === 'rugsurvived') {
+      sfx.survived();
+      floater(G.x, G.y + 34, 'not today, ser +150', T.chart);
+      toast('not today, ser. rug survived, +150');
+    } else if (e.type === 'crash') {
+      sfx.crash();
+      burst(G.x, G.y, [T.fin, T.flameO, T.chart, T.orb], 46, 300);
+      shake = 15;
+      if (mode === 'playing') gameOver();
+    }
+  }
+}
+
+// ---------------------------------------------------------------- input
+// No accidental starts: pressing on the menu only opens the stake
+// card, and on the game-over screen nothing restarts except the
+// "run it back" button.
+//
+// THE ONE BUTTON, tracked as physical state. heldPointers / heldKeys
+// mirror what is down RIGHT NOW, updated on every down / up / cancel.
+// startGame() snapshots them into ignoredPointers / ignoredKeys: an
+// input that was already down when the run started cannot thrust until
+// it has been released and pressed again. That is the whole "the press
+// that started the run must not thrust" rule, keyed off physical state
+// rather than event order.
+//
+// Why not a latch armed inside the click handler? That was the old
+// design, and it broke touch completely: for pointer input, pointerup
+// fires BEFORE click, so a latch set in apeIn() was armed after its
+// own release had already happened. It stayed armed, press() swallowed
+// the player's first real hold of every run, and the rocket free-fell
+// and crashed inside half a second — then "run it back", another
+// click, armed it again. A death loop. (Keyboard survived because
+// keyup genuinely comes after keydown.) Snapshotting has no such
+// asymmetry: a click-started run snapshots an empty set, because by
+// click time the pointer is already up.
+const heldPointers = new Set();
+const heldKeys = new Set();
+let ignoredPointers = new Set();
+let ignoredKeys = new Set();
+
+function refreshThrust() {
+  let held = false;
+  for (const id of heldPointers) if (!ignoredPointers.has(id)) { held = true; break; }
+  if (!held) for (const code of heldKeys) if (!ignoredKeys.has(code)) { held = true; break; }
+  thrustHeld = held;
+}
+
+function openStake() {
+  if (mode !== 'demo' || stakeOpen) return;
+  ensureAudio();
+  stakeOpen = true;
+  syncStakeUI();
+  $('overlay-stake').classList.remove('hidden');
+  syncState();
+}
+function closeStake() {
+  stakeOpen = false;
+  $('overlay-stake').classList.add('hidden');
+  syncState();
+}
+function apeIn() {
+  if (!stakeOpen) return;
+  closeStake();
+  startGame();
+}
+
+const stage = $('stage');
+stage.addEventListener('pointerdown', (e) => {
+  // UI inside the stage (buttons, sliders, the cards themselves) is
+  // not the one button, and its presses are never recorded as holds.
+  if (e.target.closest('button, input, .card')) return;
+  e.preventDefault();
+  ensureAudio();
+  heldPointers.add(e.pointerId);
+  if (stakeOpen) return;
+  if (mode === 'demo') { openStake(); return; }
+  if (mode !== 'playing') return; // game over: canvas clicks never restart
+  refreshThrust();
+});
+function endPointer(e) {
+  heldPointers.delete(e.pointerId);
+  ignoredPointers.delete(e.pointerId);
+  refreshThrust();
+}
+window.addEventListener('pointerup', endPointer);
+window.addEventListener('pointercancel', endPointer);
+window.addEventListener('blur', () => {
+  heldPointers.clear();
+  heldKeys.clear();
+  refreshThrust();
+  if (mode === 'playing' && !paused) togglePause();
+});
+
+const THRUST_KEYS = ['Space', 'ArrowUp', 'KeyW'];
+window.addEventListener('keydown', (e) => {
+  if (THRUST_KEYS.includes(e.code)) {
+    e.preventDefault();
+    if (e.repeat) return;
+    heldKeys.add(e.code);
+    if (stakeOpen) { apeIn(); return; }
+    if (mode === 'demo') { openStake(); return; }
+    refreshThrust();
+  } else if (e.code === 'Enter') {
+    if (stakeOpen) { apeIn(); return; }
+    if (mode === 'demo') openStake();
+  } else if (e.code === 'KeyP') {
+    togglePause();
+  } else if (e.code === 'KeyM') {
+    toggleMute();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  if (THRUST_KEYS.includes(e.code)) {
+    heldKeys.delete(e.code);
+    ignoredKeys.delete(e.code);
+    refreshThrust();
+  }
+});
+
+function togglePause() {
+  if (mode !== 'playing') return;
+  paused = !paused;
+  $('paused-banner').classList.toggle('hidden', !paused);
+  $('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+}
+function toggleMute() {
+  muted = !muted;
+  store(MUTE_KEY, muted ? '1' : '0');
+  $('btn-sound').textContent = `Sound: ${muted ? 'off' : 'on'}`;
+  if (!muted) ensureAudio();
+}
+
+$('btn-start').addEventListener('click', () => { openStake(); });
+$('btn-over-settings').addEventListener('click', () => {
+  setOverSettings($('over-settings-body').classList.contains('hidden'));
+});
+$('btn-start-settings').addEventListener('click', () => {
+  setSettingsPanel(
+    $('btn-start-settings'), $('start-settings-body'),
+    $('start-settings-body').classList.contains('hidden'),
+  );
+});
+$('btn-ape').addEventListener('click', () => { apeIn(); });
+$('btn-ngmi').addEventListener('click', () => { closeStake(); });
+$('btn-again').addEventListener('click', () => { startGame(); });
+$('btn-download').addEventListener('click', () => { downloadPnl(); });
+$('btn-share').addEventListener('click', () => { shareOnX(); });
+$('btn-pause').addEventListener('click', () => togglePause());
+$('btn-sound').addEventListener('click', () => toggleMute());
+$('btn-theme').addEventListener('click', () => toggleTheme());
+
+// ---------------------------------------------------------------- sizing
+let viewW = 920; // world units across the screen
+function fit() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  viewW = r.width < 560 ? 600 : 920;
+}
+
+// The stage's height must never rest on the 100dvh flex chain alone.
+// In at least one Android file viewer that chain resolved to nothing:
+// the page rendered (header, HUD, buttons, help) but the stage was a
+// zero-height seam — no canvas, no cards, no game, and fit() had baked
+// a 0px backing store at boot with no resize ever arriving to fix it.
+// So on phone widths the stage gets an explicit pixel height, measured
+// from window.innerHeight minus the real heights of everything else on
+// screen, with a hard floor. The stylesheet sizes stay underneath as a
+// fallback; once set, the JS pixel height (and flex:none) wins.
+const STAGE_FLOOR_PX = 320; // the stage never collapses below this on a phone
+
+function sizeStage() {
+  const stage = $('stage');
+  if (window.innerWidth > 760) {
+    // Desktop keeps the stylesheet sizing; drop any phone measurement.
+    if (stage.style.height) { stage.style.height = ''; stage.style.flex = ''; fit(); }
+    return;
+  }
+  const vh = window.innerHeight || document.documentElement.clientHeight || 0;
+  const chromeOf = (el) => {
+    if (!el) return 0;
+    const cs = getComputedStyle(el);
+    return el.offsetHeight + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);
+  };
+  const wrap = document.querySelector('.stage-wrap');
+  const wrapCs = getComputedStyle(wrap);
+  const used = chromeOf(document.querySelector('.topbar'))
+    + chromeOf($('toast'))
+    + chromeOf(document.querySelector('.howto'))
+    + parseFloat(wrapCs.paddingTop || 0) + parseFloat(wrapCs.paddingBottom || 0);
+  stage.style.flex = '0 0 auto'; // the measured px height wins over the flex chain
+  stage.style.height = `${Math.max(STAGE_FLOOR_PX, Math.floor(vh - used))}px`;
+  fit(); // re-sync the canvas backing store to the stage's real box
+}
+window.addEventListener('resize', sizeStage);
+window.addEventListener('orientationchange', sizeStage);
+window.addEventListener('load', sizeStage);
+// Slow WebViews settle late (fonts, browser chrome, innerHeight still
+// moving): re-measure shortly after boot so a stage sized against a
+// half-laid-out page recovers instead of staying collapsed.
+setTimeout(sizeStage, 500);
+setTimeout(sizeStage, 1500);
+
+// ---------------------------------------------------------------- render
+function hash01(n) {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function draw(dt) {
+  const T = THEMES[themeName];
+  const w = canvas.getBoundingClientRect().width;
+  const h = canvas.getBoundingClientRect().height;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const scaleX = w / viewW;
+  const scaleY = h / WORLD_H;
+  const camX = G.x - viewW * 0.24;
+  const X = (wx) => (wx - camX) * scaleX;
+  const Y = (wy) => h - wy * scaleY;
+
+  ctx.save();
+  if (shake > 0.2) {
+    ctx.translate((Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
+  }
+
+  // Sky
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, T.sky[0]); sky.addColorStop(0.55, T.sky[1]); sky.addColorStop(1, T.sky[2]);
+  ctx.fillStyle = sky;
+  ctx.fillRect(-20, -20, w + 40, h + 40);
+
+  // Speckles (stars at night, dust motes on paper)
+  ctx.fillStyle = T.speckle;
+  for (let i = 0; i < 64; i++) {
+    const sx = (((i * 173.3 - camX * scaleX * 0.12) % (w + 30)) + w + 30) % (w + 30) - 15;
+    const sy = (i * 97.71) % h;
+    ctx.globalAlpha = 0.25 + hash01(i * 3) * 0.5;
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+
+  // Parallax candlesticks, far behind the action
+  const slot = 46;
+  const bgX = camX * 0.45;
+  const k0 = Math.floor(bgX / slot) - 1;
+  const k1 = k0 + Math.ceil(viewW / slot) + 3;
+  for (let k = k0; k < k1; k++) {
+    const sx = (k * slot - bgX) * scaleX;
+    const mid = 320 + (hash01(k) - 0.5) * 300;
+    const body = 26 + hash01(k + 999) * 95;
+    const wick = 12 + hash01(k + 77) * 34;
+    const up = hash01(k + 55) > 0.45;
+    ctx.fillStyle = up ? T.candleUp : T.candleDown;
+    ctx.fillRect(sx + slot * scaleX * 0.22, Y(mid + body / 2), slot * scaleX * 0.56, body * scaleY);
+    ctx.fillRect(sx + slot * scaleX * 0.47, Y(mid + body / 2 + wick), slot * scaleX * 0.06, (body + wick * 2) * scaleY);
+  }
+
+  // Grid
+  ctx.strokeStyle = T.grid;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const gridOff = (camX * 0.7) % 90;
+  for (let gx = -gridOff * scaleX; gx < w; gx += 90 * scaleX) { ctx.moveTo(gx, 0); ctx.lineTo(gx, h); }
+  for (let wy = 0; wy <= WORLD_H; wy += 80) { ctx.moveTo(0, Y(wy)); ctx.lineTo(w, Y(wy)); }
+  ctx.stroke();
+
+  // The chart (terrain): filled body + glowing line
+  const x0 = camX - 24;
+  const x1 = camX + viewW + 24;
+  ctx.beginPath();
+  let first = true;
+  for (let wx = x0; wx <= x1; wx += 7) {
+    const sx = X(wx); const sy = Y(terrainHeightAt(G, wx));
+    if (first) { ctx.moveTo(sx, sy); first = false; } else ctx.lineTo(sx, sy);
+  }
+  ctx.lineTo(X(x1), h + 24); ctx.lineTo(X(x0), h + 24); ctx.closePath();
+  const fill = ctx.createLinearGradient(0, 0, 0, h);
+  fill.addColorStop(0, T.fillTop); fill.addColorStop(1, T.fillBot);
+  ctx.fillStyle = fill;
+  ctx.fill();
+
+  ctx.beginPath();
+  first = true;
+  for (let wx = x0; wx <= x1; wx += 7) {
+    const sx = X(wx); const sy = Y(terrainHeightAt(G, wx));
+    if (first) { ctx.moveTo(sx, sy); first = false; } else ctx.lineTo(sx, sy);
+  }
+  ctx.save();
+  ctx.shadowColor = T.glow; ctx.shadowBlur = 13;
+  ctx.strokeStyle = T.chart; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.restore();
+
+  // Rug dressing: warning makes the whole line strobe red; during the
+  // event the freshest cliff zone is tinted.
+  if (G.rugPhase === 'warning' && Math.sin(G.time * 26) > 0) {
+    ctx.beginPath();
+    first = true;
+    for (let wx = x0; wx <= x1; wx += 7) {
+      const sx = X(wx); const sy = Y(terrainHeightAt(G, wx));
+      if (first) { ctx.moveTo(sx, sy); first = false; } else ctx.lineTo(sx, sy);
+    }
+    ctx.strokeStyle = T.cliff; ctx.lineWidth = 3; ctx.globalAlpha = 0.85;
+    ctx.stroke(); ctx.globalAlpha = 1;
+  }
+  if (G.rugPhase === 'active' && G.cliffs.length) {
+    const c = G.cliffs[G.cliffs.length - 1];
+    if (c.x + 980 > camX && c.x < x1) {
+      ctx.beginPath();
+      first = true;
+      for (let wx = Math.max(x0, c.x); wx <= Math.min(x1, c.x + 420); wx += 7) {
+        const sx = X(wx); const sy = Y(terrainHeightAt(G, wx));
+        if (first) { ctx.moveTo(sx, sy); first = false; } else ctx.lineTo(sx, sy);
+      }
+      ctx.lineTo(X(Math.min(x1, c.x + 420)), h + 24); ctx.lineTo(X(Math.max(x0, c.x)), h + 24); ctx.closePath();
+      ctx.fillStyle = T.cliff; ctx.globalAlpha = 0.16 + 0.06 * Math.sin(G.time * 9);
+      ctx.fill(); ctx.globalAlpha = 1;
+    }
+  }
+
+  // Orbs
+  for (const orb of G.orbs) {
+    if (orb.collected || orb.missed) continue;
+    const sx = X(orb.x);
+    if (sx < -30 || sx > w + 30) continue;
+    const sy = Y(orb.y);
+    const pulse = 1 + Math.sin(G.time * 4 + orb.x * 0.05) * 0.1;
+    const r = 11 * Math.max(scaleX, 0.55) * pulse;
+    ctx.save();
+    ctx.shadowColor = T.orb; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = T.orb; ctx.fill();
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(sx, sy, r * 0.62, 0, Math.PI * 2);
+    ctx.fillStyle = T.orbCore; ctx.fill();
+    ctx.fillStyle = T.orbInk;
+    ctx.font = `800 ${Math.round(r * 0.95)}px system-ui, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('N', sx, sy + 0.5);
+  }
+
+  // Particles
+  for (const p of particles) {
+    const a = 1 - p.life / p.max;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(X(p.wx), Y(p.wy), p.size * a + 0.4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // The rocket
+  if (mode !== 'over') {
+    const px = X(G.x);
+    const py = Y(G.y);
+    const u = ((scaleX + scaleY) / 2) * 1.3;
+    const rot = Math.max(-0.6, Math.min(0.55, -G.vy * 0.00075));
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(rot);
+    ctx.scale(u, u);
+    if (thrustHeld) {
+      const fl = 14 + Math.random() * 10 + Math.max(0, G.vy) * 0.012;
+      ctx.beginPath();
+      ctx.moveTo(-13, 4.6); ctx.lineTo(-13 - fl, 0); ctx.lineTo(-13, -4.6); ctx.closePath();
+      ctx.fillStyle = T.flameO; ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-13, 2.6); ctx.lineTo(-13 - fl * 0.55, 0); ctx.lineTo(-13, -2.6); ctx.closePath();
+      ctx.fillStyle = T.flameY; ctx.fill();
+    }
+    ctx.fillStyle = T.fin;
+    ctx.beginPath(); ctx.moveTo(-11, -6); ctx.lineTo(-19, -14); ctx.lineTo(-6, -10.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-11, 6); ctx.lineTo(-19, 14); ctx.lineTo(-6, 10.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 17, 9.5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = T.body; ctx.fill();
+    ctx.strokeStyle = 'rgba(20,26,54,0.35)'; ctx.lineWidth = 1 / u + 0.6; ctx.stroke();
+    ctx.beginPath(); ctx.arc(5.5, -1.5, 4.1, 0, Math.PI * 2);
+    ctx.fillStyle = T.win; ctx.fill();
+    ctx.beginPath(); ctx.arc(6.8, -2.8, 1.3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.fill();
+    ctx.restore();
+  }
+
+  // Floaters
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const f of floaters) {
+    const a = 1 - f.life / f.max;
+    ctx.globalAlpha = a;
+    ctx.font = '800 15px system-ui, sans-serif';
+    ctx.lineWidth = 4; ctx.strokeStyle = T.floaterStroke;
+    const sx = X(f.wx); const sy = Y(f.wy);
+    ctx.strokeText(f.text, sx, sy);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, sx, sy);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- HUD
+function setHud(id, value) {
+  if (lastHud[id] !== value) { lastHud[id] = value; $(id).textContent = value; }
+}
+function updateHud() {
+  // Crossing the stored best lights the BEST box up for the rest of
+  // the run (and the record is saved on the spot, not just at the end).
+  if (mode === 'playing' && !bestBeaten && best > 0 && G.score > best) {
+    bestBeaten = true;
+    best = G.score;
+    store(BEST_KEY, String(best));
+    $('stat-best-box').classList.add('beaten');
+    if (recorder) recorder.noteNewBest(G.time, G.score);
+  }
+  setHud('stat-score', String(G.score));
+  setHud('stat-best', String(Math.max(best, G.score)));
+  const comboEl = $('stat-combo');
+  const comboText = G.combo >= 2 ? `x${G.multiplier} (${G.combo})` : '—';
+  setHud('stat-combo', comboText);
+  comboEl.classList.toggle('hot', G.combo >= 2);
+  setHud('stat-orbs', String(G.orbsCollected));
+  setHud('stat-speed', `${(G.speed / (BASE_SPEED * settings.speed)).toFixed(1)}x`);
+}
+
+// ---------------------------------------------------------------- loop
+let lastTs = 0;
+function frame(ts) {
+  requestAnimationFrame(frame);
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min((ts - lastTs) / 1000, 0.05);
+  lastTs = ts;
+  if (!G) return;
+  const T = THEMES[themeName];
+
+  // Only a live run simulates. The menu scene is FROZEN: one parked
+  // frame of terrain and rocket behind the start card — nothing
+  // plays itself. The game-over world also stays where the crash
+  // left it; only its particles settle (below).
+  if (!paused && mode === 'playing') {
+    const events = step(G, dt, thrustHeld);
+    handleEvents(events, T);
+    if (recorder) recorder.tick(G); // chart samples for the PnL card
+  }
+
+  if (!paused && mode !== 'demo') {
+    for (const p of particles) {
+      p.life += dt;
+      p.wx += p.vx * dt + G.speed * dt * 0.12;
+      p.wy += p.vy * dt;
+      p.vy -= 320 * dt;
+    }
+    particles = particles.filter((p) => p.life < p.max);
+    for (const f of floaters) { f.life += dt; f.wy += 36 * dt; }
+    floaters = floaters.filter((f) => f.life < f.max);
+    shake = Math.max(0, shake - dt * 26);
+  }
+
+  draw(dt);
+  updateHud();
+}
+
+// ---------------------------------------------------------------- test handle
+// Minimal debug surface for headless verification: lets checks read the
+// live state and confirm real input (touch included) drives the game.
+// Harmless in normal play — it changes nothing, only observes.
+window.__pumpRider = {
+  get mode() { return mode; },
+  get stakeOpen() { return stakeOpen; },
+  get stake() { return currentStake(); },
+  get thrustHeld() { return thrustHeld; },
+  get game() { return G; },
+  get lastRun() { return lastSummary; },
+  get lastCard() { return lastCard; },
+  pnlCardPng: () => renderPnlPng(),
+  audioState: () => (actx ? actx.state : 'none'),
+  terrainHeightAt: (x) => terrainHeightAt(G, x),
+};
+
+// ---------------------------------------------------------------- boot
+applyTheme();
+wireSettings();
+wireStake();
+$('btn-sound').textContent = `Sound: ${muted ? 'off' : 'on'}`;
+sizeStage();
+newRun(seedParam !== null ? seedParam : 'pump-rider-demo');
+mode = 'demo';
+syncState();
+if (params.get('play') === '1') $('overlay-start').classList.add('hidden');
+requestAnimationFrame(frame);
+
+})();
+</script>
+</body>
+</html>
