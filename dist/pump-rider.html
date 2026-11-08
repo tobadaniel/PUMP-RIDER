@@ -1655,6 +1655,21 @@ function shareTextFor(summary, settle, isNewBest) {
   );
 }
 
+// Game-over headlines: one short line each, small type, never wraps.
+// The crash set mourns a missed bar; the WIN set celebrates a cleared
+// one. A new best outranks both. The pick lives here — in the shared
+// card model — so the screen card, the PNG painter and the tests all
+// read the same headline for the same run, rotated deterministically
+// from the run's own numbers (the same hash family as the footer).
+const NEW_BEST_LINE = 'new best. wagmi.';
+const WIN_LINES = ['called it. bag paid.', 'bar cleared. printed.', 'read the chart. ate.', 'the bar blinked first.'];
+const OVER_LINES = ['kissed the line.', 'down bad.', 'rugged.', 'not NEAR enough.'];
+function pickOverHeadline(isBest, win, seed = 0) {
+  if (isBest) return NEW_BEST_LINE;
+  const lines = win ? WIN_LINES : OVER_LINES;
+  return lines[Math.abs(Math.floor(seed)) % lines.length];
+}
+
 // Everything the PnL card renders, derived from one finished run.
 // Pure: the DOM card and the PNG painter both draw from this model, so
 // the downloaded card can never disagree with the screen.
@@ -1699,6 +1714,7 @@ function buildCardData(summary, prev, isNewBest) {
   ];
   return {
     preset: String(summary.preset || '').toUpperCase(),
+    headline: pickOverHeadline(isNewBest, win, summary.score * 7 + summary.orbs * 13 + Math.floor(summary.duration)),
     score: summary.score,
     heroText: `+${summary.score}`,
     win,
@@ -2319,17 +2335,15 @@ function startGame() {
   syncState();
 }
 
-// Death headlines: one short line each, small type, never wraps.
-const OVER_LINES = ['kissed the line.', 'down bad.', 'rugged.', 'not NEAR enough.'];
+// Game-over headlines come from the shared card model (recap.js):
+// a new best first, then the WIN set for a cleared bar, else the
+// crash set. One short line, small type, never wraps.
 function gameOver() {
   mode = 'over';
   syncState();
   crashAt = performance.now();
   const isBest = bestBeaten || G.score > best;
   if (isBest) { best = G.score; store(BEST_KEY, String(best)); }
-  $('over-title').textContent = isBest
-    ? 'new best. wagmi.'
-    : OVER_LINES[(Math.random() * OVER_LINES.length) | 0];
   // PnL card: close the run's books, settle it against the called
   // bar, remember it (score curve included, decimated) so the next
   // card can draw it as the sub-line, and render the card.
@@ -2349,7 +2363,9 @@ function gameOver() {
       samples: decimateSamples(lastSummary.samples),
     }));
     renderPnlCard(lastCard, lastSummary, prev);
+    $('over-title').textContent = lastCard.headline;
   }
+  if (!recorder) $('over-title').textContent = pickOverHeadline(isBest, false, G.score);
   setOverSettings(false); // difficulty starts collapsed on this card
   setTimeout(() => {
     if (mode !== 'over') return;

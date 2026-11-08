@@ -15,6 +15,7 @@ import {
 } from './engine.js';
 import {
   createRunRecorder, buildCardData, chartModel, LAST_RUN_KEY, decimateSamples,
+  pickOverHeadline,
   STAKE_LADDER, STAKE_KEY, DEFAULT_STAKE, stakeIndexOf, stepStakeIndex, fmtMoney,
   TARGET_LADDER, TARGET_KEY, DEFAULT_TARGET, targetIndexOf, targetPoints,
   CURRENCY_KEY, NEAR_LADDER, DEFAULT_NEAR_STAKE, sanitizeCurrency,
@@ -550,17 +551,15 @@ function startGame() {
   syncState();
 }
 
-// Death headlines: one short line each, small type, never wraps.
-const OVER_LINES = ['kissed the line.', 'down bad.', 'rugged.', 'not NEAR enough.'];
+// Game-over headlines come from the shared card model (recap.js):
+// a new best first, then the WIN set for a cleared bar, else the
+// crash set. One short line, small type, never wraps.
 function gameOver() {
   mode = 'over';
   syncState();
   crashAt = performance.now();
   const isBest = bestBeaten || G.score > best;
   if (isBest) { best = G.score; store(BEST_KEY, String(best)); }
-  $('over-title').textContent = isBest
-    ? 'new best. wagmi.'
-    : OVER_LINES[(Math.random() * OVER_LINES.length) | 0];
   // PnL card: close the run's books, settle it against the called
   // bar, remember it (score curve included, decimated) so the next
   // card can draw it as the sub-line, and render the card.
@@ -580,7 +579,9 @@ function gameOver() {
       samples: decimateSamples(lastSummary.samples),
     }));
     renderPnlCard(lastCard, lastSummary, prev);
+    $('over-title').textContent = lastCard.headline;
   }
+  if (!recorder) $('over-title').textContent = pickOverHeadline(isBest, false, G.score);
   setOverSettings(false); // difficulty starts collapsed on this card
   setTimeout(() => {
     if (mode !== 'over') return;

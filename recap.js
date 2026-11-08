@@ -412,6 +412,21 @@ function shareTextFor(summary, settle, isNewBest) {
   );
 }
 
+// Game-over headlines: one short line each, small type, never wraps.
+// The crash set mourns a missed bar; the WIN set celebrates a cleared
+// one. A new best outranks both. The pick lives here — in the shared
+// card model — so the screen card, the PNG painter and the tests all
+// read the same headline for the same run, rotated deterministically
+// from the run's own numbers (the same hash family as the footer).
+export const NEW_BEST_LINE = 'new best. wagmi.';
+export const WIN_LINES = ['called it. bag paid.', 'bar cleared. printed.', 'read the chart. ate.', 'the bar blinked first.'];
+export const OVER_LINES = ['kissed the line.', 'down bad.', 'rugged.', 'not NEAR enough.'];
+export function pickOverHeadline(isBest, win, seed = 0) {
+  if (isBest) return NEW_BEST_LINE;
+  const lines = win ? WIN_LINES : OVER_LINES;
+  return lines[Math.abs(Math.floor(seed)) % lines.length];
+}
+
 // Everything the PnL card renders, derived from one finished run.
 // Pure: the DOM card and the PNG painter both draw from this model, so
 // the downloaded card can never disagree with the screen.
@@ -456,6 +471,7 @@ export function buildCardData(summary, prev, isNewBest) {
   ];
   return {
     preset: String(summary.preset || '').toUpperCase(),
+    headline: pickOverHeadline(isNewBest, win, summary.score * 7 + summary.orbs * 13 + Math.floor(summary.duration)),
     score: summary.score,
     heroText: `+${summary.score}`,
     win,

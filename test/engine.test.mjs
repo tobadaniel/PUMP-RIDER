@@ -17,6 +17,7 @@ import {
   targetMultiple, targetPoints, settleRun, decimateSamples, PREV_SAMPLES_MAX,
   NEAR_RATE, NEAR_LADDER, DEFAULT_NEAR_STAKE, sanitizeCurrency, sanitizeNearStake,
   usdToNear, nearToUsd, stepNearStake, fmtNear, fmtAmount, fmtSignedAmount, fmtUnitLower,
+  pickOverHeadline, WIN_LINES, OVER_LINES, NEW_BEST_LINE,
 } from '../recap.js';
 
 const DT = 1 / 60;
@@ -1000,4 +1001,55 @@ function runWith(s, seconds, thrustFn, onEvent) {
   ok('currency: NEAR ladder, conversions, unit-true card and share text');
 }
 
-console.log(`\n${passed}/17 test groups passed`);
+// 18. Game-over headlines: a cleared bar speaks in the WIN set,
+// never the crash set; a new best outranks both; a missed bar keeps
+// the crash set. The pick is the card model's own field, so screen,
+// PNG and tests can never disagree.
+{
+  const sum = {
+    preset: 'Chill', score: 150, peakScore: 150, orbs: 3, closeCalls: 1,
+    rugsSurvived: 0, bestCombo: 2, bestMultiplier: 1.5, duration: 9.4,
+    events: [], samples: [],
+  };
+  assert.deepEqual(WIN_LINES, ['called it. bag paid.', 'bar cleared. printed.', 'read the chart. ate.', 'the bar blinked first.'], 'the win headline set is the four chosen lines');
+  // A cleared bar that is also a new best: the new-best line wins.
+  const bestWin = buildCardData({ ...sum, score: 400, peakScore: 400 }, { score: 100 }, true);
+  assert.equal(bestWin.win, true, 'fixture clears the bar');
+  assert.equal(bestWin.headline, NEW_BEST_LINE, 'cleared + new best headlines the new best');
+  assert.equal(pickOverHeadline(true, true, 2), NEW_BEST_LINE, 'picker: best outranks win');
+  assert.equal(pickOverHeadline(true, false, 2), NEW_BEST_LINE, 'picker: best outranks a miss too');
+  // A cleared bar, not a best: a WIN-set line, never a crash line,
+  // and the rotation walks the whole set.
+  const winHeads = new Set();
+  for (let s = 0; s < WIN_LINES.length; s++) {
+    const h = pickOverHeadline(false, true, s);
+    assert.equal(h, WIN_LINES[s], 'picker walks the win set in order');
+    assert.ok(!OVER_LINES.includes(h), 'a cleared bar never headlines a crash line');
+    winHeads.add(h);
+  }
+  assert.equal(winHeads.size, WIN_LINES.length, 'the win rotation covers every win line');
+  for (const score of [300, 331, 400, 512, 1284]) {
+    const card = buildCardData({ ...sum, score, peakScore: score }, { score: 100 }, false);
+    assert.equal(card.win, true, 'fixture clears the bar');
+    assert.ok(WIN_LINES.includes(card.headline), `cleared card headlines the win set (score ${score})`);
+    assert.ok(!OVER_LINES.includes(card.headline), 'cleared card headline is never a crash line');
+  }
+  // A missed bar: the crash set, unchanged, rotating as before.
+  for (let s = 0; s < OVER_LINES.length; s++) {
+    assert.equal(pickOverHeadline(false, false, s), OVER_LINES[s], 'picker walks the crash set in order');
+  }
+  const missedCard = buildCardData({ ...sum }, { score: 100 }, false);
+  assert.equal(missedCard.win, false, 'fixture misses the bar');
+  assert.ok(OVER_LINES.includes(missedCard.headline), 'missed card headlines the crash set');
+  // Every headline stays one short line in the player's voice
+  // (the crash set's NEAR keeps its brand capitals, as before).
+  for (const h of [NEW_BEST_LINE, ...WIN_LINES]) {
+    assert.equal(h, h.toLowerCase(), 'win and new-best headlines are lowercase');
+  }
+  for (const h of [NEW_BEST_LINE, ...WIN_LINES, ...OVER_LINES]) {
+    assert.ok(h.length <= 22, `headline stays short: ${h}`);
+  }
+  ok('headlines: win set for cleared bars, new best outranks, crash set for misses');
+}
+
+console.log(`\n${passed}/18 test groups passed`);
