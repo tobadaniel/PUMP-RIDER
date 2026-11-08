@@ -89,7 +89,7 @@ const shot = async (name) => {
   console.log('screenshot ->', name);
 };
 
-const URL_GAME = `http://127.0.0.1:${PORT}/dist/pump-rider.html?seed=7&theme=dark`;
+const URL_GAME = `http://127.0.0.1:${PORT}${process.env.PR_BUNDLE || '/dist/pump-rider.html'}?seed=7&theme=dark`;
 async function loadGame() {
   await send('Page.navigate', { url: URL_GAME });
   for (let i = 0; i < 60; i++) {
@@ -226,6 +226,120 @@ const beaten = await ev(`document.getElementById('stat-best-box').classList.cont
 const bestShown = await ev(`document.getElementById('stat-best').textContent`);
 check('(e3) BEST box lit up live at the crossing', beaten === true && Number(bestShown) > 30,
   `beaten=${beaten} bestShown=${bestShown}`);
+
+// =======================================================================
+// FIELD REPORTS — iOS hardening proofs: the help strip scrolls in
+// BOTH directions, a hold that starts inside the strip never pumps,
+// and a steady canvas hold never pulses (zero dropped samples).
+// =======================================================================
+await loadGame();
+async function touchDrag(x, y1, y2, id = 9) {
+  await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: y1, id }] });
+  const steps = 6;
+  for (let i = 1; i <= steps; i++) {
+    await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: Math.round(y1 + (y2 - y1) * (i / steps)), id }] });
+    await sleep(45);
+  }
+  await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await sleep(400);
+}
+const stripBox = await ev(`(() => { const ol = document.querySelector('.howto ol'); const r = ol.getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2, sh: ol.scrollHeight, ch: ol.clientHeight }; })()`);
+check('(g0) the help strip is a real scroll box at 390px', stripBox.sh > stripBox.ch + 10,
+  `sh=${stripBox.sh} ch=${stripBox.ch}`);
+await touchDrag(stripBox.x, stripBox.y + 18, stripBox.y - 34);
+const downTop = await ev(`document.querySelector('.howto ol').scrollTop`);
+check('(g1) a drag up inside the strip scrolls it down', downTop > 4, `scrollTop=${downTop}`);
+await touchDrag(stripBox.x, stripBox.y - 18, stripBox.y + 34);
+const upTop = await ev(`document.querySelector('.howto ol').scrollTop`);
+check('(g2) a drag down inside the strip scrolls it back UP', upTop < downTop - 4,
+  `scrollTop ${downTop} -> ${upTop}`);
+const hStart = await rectOf('#btn-start'); await tap(hStart.x, hStart.y, 2);
+const hApe = await rectOf('#btn-ape'); await tap(hApe.x, hApe.y, 2);
+check('(h0) run started for the strip-hold test', (await state()).mode === 'playing');
+const stripBox2 = await ev(`(() => { const r = document.querySelector('.howto ol').getBoundingClientRect();
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+await touchHoldStart(stripBox2.x, stripBox2.y, 9);
+let stripPump = 0;
+for (let i = 0; i < 5; i++) { await sleep(120); if ((await state()).thrustHeld) stripPump += 1; }
+await touchRelease();
+check('(h) holding inside the help strip never pumps the rocket', stripPump === 0,
+  `pumped samples=${stripPump}`);
+await loadGame();
+const iStart = await rectOf('#btn-start'); await tap(iStart.x, iStart.y, 2);
+const iApe = await rectOf('#btn-ape'); await tap(iApe.x, iApe.y, 2);
+const iGame = await rectOf('#game');
+await touchHoldStart(iGame.x, iGame.y, 9);
+const holdSamples = [];
+for (let i = 0; i < 22; i++) { await sleep(60); const s = await state(); if (s.mode === 'playing') holdSamples.push(s.thrustHeld); }
+await touchRelease();
+const firstTrue = holdSamples.indexOf(true);
+const drops = firstTrue < 0 ? -1 : holdSamples.slice(firstTrue).filter((v) => !v).length;
+check('(i) a steady canvas hold never pulses: zero dropped input samples',
+  firstTrue >= 0 && holdSamples.length >= 10 && drops === 0,
+  `samples=${holdSamples.length} drops=${drops}`);
+
+// (j) The chopped-hold heal, proven with synthetic pointer events
+// driven through the REAL handlers: a pointercancel for a pointer
+// that is still touching must not end the press (grace, then a move
+// heals it outright); a cancel followed by silence still releases.
+const evAsync = async (expr) => {
+  const r = await send('Runtime.evaluate', { expression: expr, returnByValue: true, awaitPromise: true });
+  if (r.result?.exceptionDetails) throw new Error('evaluate failed: ' + JSON.stringify(r.result.exceptionDetails).slice(0, 300));
+  return r.result?.result?.value;
+};
+await loadGame();
+const jStart = await rectOf('#btn-start'); await tap(jStart.x, jStart.y, 2);
+const jApe = await rectOf('#btn-ape'); await tap(jApe.x, jApe.y, 2);
+check('(j0) run started for the heal test', (await state()).mode === 'playing');
+const heal = await evAsync(`(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const cv = document.getElementById('game');
+  const P = window.__pumpRider;
+  const fire = (type, id, target) => (target || window).dispatchEvent(
+    new PointerEvent(type, { pointerId: id, pointerType: 'touch', bubbles: true, cancelable: true }));
+  fire('pointerdown', 77, cv);
+  await sleep(60);
+  const afterDown = P.thrustHeld;
+  fire('pointercancel', 77);
+  await sleep(60);
+  const afterCancel = P.thrustHeld;
+  fire('pointermove', 77);
+  await sleep(340);
+  const afterGrace = P.thrustHeld;
+  fire('pointerup', 77);
+  await sleep(60);
+  const afterUp = P.thrustHeld;
+  fire('pointerdown', 78, cv);
+  await sleep(60);
+  fire('pointercancel', 78);
+  await sleep(430);
+  const droppedAfterRealCancel = P.thrustHeld;
+  fire('pointerup', 78);
+  return { afterDown, afterCancel, afterGrace, afterUp, droppedAfterRealCancel };
+})()`);
+check('(j) pointercancel of a still-touching pointer never ends the press; a silent cancel still releases',
+  heal.afterDown === true && heal.afterCancel === true && heal.afterGrace === true &&
+  heal.afterUp === false && heal.droppedAfterRealCancel === false, JSON.stringify(heal));
+
+// (k) The soundtrack: started by the first gesture's unlock, alive
+// at its modest gain, silenced at the gain node by the mute, back
+// when unmuted.
+const music0 = await ev(`window.__pumpRider.musicState()`);
+check('(k1) the music scheduler started on the audio unlock',
+  music0.started === true && music0.gain > 0.1 && music0.gain <= 0.25, JSON.stringify(music0));
+const sndBtn = await rectOf('#btn-sound');
+await tap(sndBtn.x, sndBtn.y, 2);
+const musicMuted = await ev(`window.__pumpRider.musicState()`);
+check('(k2) the mute silences the music gain node (and the button shows it)',
+  musicMuted.gain === 0 && (await ev(`document.getElementById('btn-sound').textContent`)) === '🔇',
+  JSON.stringify(musicMuted));
+const sndBtn2 = await rectOf('#btn-sound');
+await tap(sndBtn2.x, sndBtn2.y, 2);
+const musicBack = await ev(`window.__pumpRider.musicState()`);
+check('(k3) unmuting restores the music gain and the icon',
+  musicBack.gain > 0.1 && (await ev(`document.getElementById('btn-sound').textContent`)) === '🔊',
+  JSON.stringify(musicBack));
 
 // =======================================================================
 // DESKTOP PASS — mouse parity + gameplay screenshot

@@ -1,8 +1,8 @@
 // recap.js — the post-run PnL card data: a pure, DOM-free recorder that
 // turns one run of Pump Rider into a run summary (stats, a score-over-
 // time sample series, chart markers), plus the shareable "PnL card"
-// model the game-over screen renders, and the verdict that grades the
-// run against the player's previous one.
+// model the game-over screen renders, and the settlement that grades
+// the run against the target bar the player called before it started.
 //
 // The app feeds it the engine's own events (see engine.js step()) as
 // they happen and ticks it with the live state every frame; every
@@ -19,8 +19,8 @@
 // exactly at the crash — finish() always lands the final sample there.
 
 export const MAX_LOG_EVENTS = 200;
-export const MAX_SAMPLES = 720;
-export const SAMPLE_EVERY = 0.25; // seconds between chart samples
+export const MAX_SAMPLES = 1440;
+export const SAMPLE_EVERY = 0.12; // seconds between chart samples — fine enough that orb steps and rug jumps stay visible as steps in the line
 export const LAST_RUN_KEY = 'pump-rider-last-run';
 
 // ------------------------------------------------------------------ stake
@@ -42,6 +42,75 @@ export function stepStakeIndex(index, dir) {
   return Math.min(STAKE_LADDER.length - 1, Math.max(0, index + Math.sign(dir)));
 }
 
+// ------------------------------------------------------------- currency
+// The stake — and everything it settles into — can be denominated in
+// dollars or in NEAR. The math never changes (payout = stake x
+// multiple in whichever unit is active); only the ladders, the
+// stepper steps and the formatting do. The rate is a fixed reference
+// (1 NEAR = $3.63, fetched 2026-11-07 for the thesis board): the game
+// is fully offline and never pretends the rate is live.
+export const NEAR_RATE = 3.63;
+export const CURRENCY_KEY = 'pump-rider-currency';
+export const NEAR_LADDER = [1, 5, 10, 50, 100, 250];
+export const DEFAULT_NEAR_STAKE = 10;
+
+export function sanitizeCurrency(v) {
+  return v === 'near' ? 'near' : 'usd';
+}
+export function sanitizeNearStake(v) {
+  if (!Number.isFinite(v)) return DEFAULT_NEAR_STAKE;
+  return Math.min(1000, Math.max(0.5, Math.round(v * 100) / 100));
+}
+// Switching units converts the stake at the reference rate. Into
+// NEAR: two decimals under 10 NEAR, whole numbers at or above.
+// Into dollars: whole dollars, snapped to the nearest USD ladder
+// rung (log-nearest, so the relative distortion is smallest) — the
+// USD chips and stepper stay the one source of truth there.
+export function usdToNear(usd) {
+  const raw = usd / NEAR_RATE;
+  return raw < 10 ? Math.round(raw * 100) / 100 : Math.round(raw);
+}
+export function nearToUsd(near) {
+  const raw = Math.round(near * NEAR_RATE);
+  let rung = STAKE_LADDER[0];
+  let bestDist = Infinity;
+  for (const candidate of STAKE_LADDER) {
+    const d = Math.abs(Math.log(raw / candidate));
+    if (d < bestDist) { bestDist = d; rung = candidate; }
+  }
+  return rung;
+}
+// The NEAR stepper: half-NEAR steps under 10, then steps of 5.
+export function stepNearStake(v, dir) {
+  const cur = sanitizeNearStake(v);
+  const step = dir > 0 ? (cur >= 10 ? 5 : 0.5) : (cur > 10 ? 5 : 0.5);
+  return sanitizeNearStake(cur + Math.sign(dir) * step);
+}
+// A NEAR amount as bare grouped digits (the unit is added by
+// fmtAmount): integers plain, fractions to two decimals.
+export function fmtNear(v) {
+  const a = Math.abs(v);
+  const fixed = Number.isInteger(a) ? String(a) : a.toFixed(2);
+  const [int, dec] = fixed.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${grouped}${dec ? `.${dec}` : ''}`;
+}
+export function fmtAmount(v, currency) {
+  return currency === 'near' ? `${fmtNear(v)} NEAR` : fmtMoney(v);
+}
+export function fmtSignedAmount(v, currency) {
+  if (currency === 'near') {
+    if (v > 0) return `+${fmtNear(v)} NEAR`;
+    if (v < 0) return `−${fmtNear(v)} NEAR`;
+    return '0 NEAR';
+  }
+  return fmtSignedMoney(v);
+}
+// The share-text form of an amount, in the player's lowercase voice.
+export function fmtUnitLower(v, currency) {
+  return currency === 'near' ? `${fmtNear(v)} near` : fmtMoney(v);
+}
+
 // The money a finished run made: the multiple is the score in
 // hundreds, payout and pnl in dollars, rounded to the cent so the
 // card's arithmetic adds up exactly as printed.
@@ -50,6 +119,50 @@ export function moneyFor(score, stake) {
   const payout = Math.round(stake * multiple * 100) / 100;
   const pnl = Math.round((payout - stake) * 100) / 100;
   return { multiple, payout, pnl };
+}
+
+// ------------------------------------------------------------- the bar
+// Before the run the player also calls a target bar: a gain over the
+// stake they promise themselves (+50% ... +1900%). The bar is the
+// run's real grading: clear it (score >= the points it implies) and
+// the bag pays out at the run's multiple; miss it and the whole bag
+// is gone, however far the run got. Pure helpers — the stake card UI
+// in app.js walks this same ladder.
+export const TARGET_LADDER = [50, 100, 200, 400, 900, 1900];
+export const DEFAULT_TARGET = 200;
+export const TARGET_KEY = 'pump-rider-target';
+
+export function sanitizeTarget(v) {
+  return TARGET_LADDER.includes(v) ? v : DEFAULT_TARGET;
+}
+export function targetIndexOf(pct) {
+  return TARGET_LADDER.indexOf(sanitizeTarget(pct));
+}
+export function stepTargetIndex(index, dir) {
+  return Math.min(TARGET_LADDER.length - 1, Math.max(0, index + Math.sign(dir)));
+}
+// The multiple the bar demands: +200% over the stake means the bag
+// must come back 3x, and at 100 pts per 1x that is 300 pts.
+export function targetMultiple(pct) {
+  return 1 + sanitizeTarget(pct) / 100;
+}
+export function targetPoints(pct) {
+  return 100 * targetMultiple(pct);
+}
+
+// Settlement v2: a finished run graded against the called bar.
+// Clearing the bar (an exact hit counts) pays stake x multiple;
+// missing it pays nothing — the run still happened, the chart still
+// shows how far it got, but the bag is lost whole.
+export function settleRun(score, stake, targetPct) {
+  const multiple = score / 100;
+  const barMult = targetMultiple(targetPct);
+  const needed = targetPoints(targetPct);
+  const win = score >= needed;
+  const payout = win ? Math.round(stake * multiple * 100) / 100 : 0;
+  const pnl = Math.round((payout - stake) * 100) / 100;
+  const gainPct = win ? Math.round((multiple - 1) * 10000) / 100 : -100;
+  return { multiple, barMult, needed, win, payout, pnl, gainPct };
 }
 
 // "$1,000" for whole dollars, "$10.81" when there are cents, always
@@ -89,6 +202,22 @@ export function formatClock(t) {
   return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
+// The stored last run keeps its score curve so the next card can
+// draw it as the quiet sub-line under the new run's own line. Stored
+// samples are decimated to at most this many points: the shape of
+// the run survives, the storage record stays small.
+export const PREV_SAMPLES_MAX = 240;
+export function decimateSamples(samples, maxPoints = PREV_SAMPLES_MAX) {
+  if (!Array.isArray(samples)) return [];
+  if (samples.length <= maxPoints) return samples.slice();
+  const step = Math.ceil(samples.length / maxPoints);
+  const out = [];
+  for (let i = 0; i < samples.length; i += step) out.push(samples[i]);
+  const last = samples[samples.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
 export function createRunRecorder() {
   const events = []; // { t, kind, text, tone, score } — tone: plain|good|bad|gold
   let samples = []; // { t, score } — the run's score, sampled for the chart
@@ -96,6 +225,8 @@ export function createRunRecorder() {
   let lastSampleT = -Infinity;
   let preset = '';
   let stake = DEFAULT_STAKE;
+  let target = DEFAULT_TARGET;
+  let currency = 'usd';
   let orbs = 0;
   let closeCalls = 0;
   let rugsSurvived = 0;
@@ -126,11 +257,14 @@ export function createRunRecorder() {
     get samples() { return samples; },
 
     // The run starts: the ape-in entry, stamped at t=0, and the first
-    // chart sample at the origin. The stake the player picked rides
-    // along so the finished summary can settle the bag.
-    begin(presetLabel, stakeAmount) {
+    // chart sample at the origin. The stake, the called bar and the
+    // currency they are denominated in ride along so the finished
+    // summary can settle the bag against them.
+    begin(presetLabel, stakeAmount, targetPct, stakeCurrency) {
       preset = presetLabel;
-      stake = sanitizeStake(stakeAmount);
+      currency = sanitizeCurrency(stakeCurrency);
+      stake = currency === 'near' ? sanitizeNearStake(stakeAmount) : sanitizeStake(stakeAmount);
+      target = sanitizeTarget(targetPct);
       push(0, 'start', `aped in · ${presetLabel}. one button, no mercy.`, 'plain', 0);
       sample(0, 0);
     },
@@ -199,6 +333,8 @@ export function createRunRecorder() {
       return {
         preset,
         stake,
+        target,
+        currency,
         score: state.score,
         peakScore,
         orbs,
@@ -214,29 +350,10 @@ export function createRunRecorder() {
   };
 }
 
-// Grades a finished run. Green ("closed green") when the run set a new
-// best or beat the previous run's score; red when it did neither;
-// 'flat' for the very first run on the books (nothing to grade
-// against — a first run that also sets the best arrives as green via
-// isNewBest before it ever gets here).
-export function verdictFor(summary, prev, isNewBest) {
-  const deltaVsPrev = prev ? summary.score - prev.score : null;
-  if (isNewBest) {
-    return { tone: 'green', label: 'CLOSED GREEN · NEW BEST', deltaVsPrev };
-  }
-  if (prev && deltaVsPrev > 0) {
-    return { tone: 'green', label: `CLOSED GREEN · +${deltaVsPrev} vs last run`, deltaVsPrev };
-  }
-  if (!prev) {
-    return { tone: 'flat', label: 'FIRST TRADE ON THE BOOKS', deltaVsPrev: null };
-  }
-  return { tone: 'red', label: `CLOSED RED · ${deltaVsPrev} vs last run`, deltaVsPrev };
-}
-
 // Signed percent of `score` against the previous run's score, or null
 // when there is nothing meaningful to divide by (no previous run, or a
-// previous run that scored zero — the card then falls back to the
-// absolute delta, which verdictFor already carries).
+// previous run that scored zero — the vs-last-run note then falls
+// back to the absolute points delta).
 export function gainPctFor(score, prev) {
   if (!prev || !(prev.score > 0)) return null;
   return ((score - prev.score) / prev.score) * 100;
@@ -246,27 +363,49 @@ function fmtGainPct(pct) {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
 }
 
+// The quiet line under the money strip: how this run compares to the
+// previous one. Demoted, not deleted — the bar verdict owns the card
+// now, this is just the footnote. Losses carry a real minus sign.
+function vsPrevNote(summary, prev, isNewBest) {
+  let base;
+  if (!prev) {
+    base = 'first trade';
+  } else {
+    const pct = gainPctFor(summary.score, prev);
+    if (pct !== null) {
+      base = `${fmtGainPct(pct).replace('-', '−')} vs last run`;
+    } else {
+      const d = summary.score - prev.score;
+      base = `${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)} pts vs last run`;
+    }
+  }
+  return isNewBest ? `${base} · new best` : base;
+}
+
 function fmtMultiplier(m) {
   return `x${Number.isInteger(m) ? m.toFixed(0) : m}`;
 }
 
 // The share text, in the player's voice: all lowercase, no dash
-// punctuation. It opens with the stake settlement (the bag the run
-// turned), then the close, then the stats; the closing line follows
-// the verdict.
-function shareTextFor(summary, verdict, isNewBest) {
+// punctuation. It opens with the call and the settlement — the bar
+// the player picked, the multiple they actually hit, and what the
+// bag did — then the close, then the stats.
+function shareTextFor(summary, settle, isNewBest) {
   const closer = isNewBest
     ? 'new best. wagmi.'
-    : verdict.tone === 'green'
+    : settle.win
       ? 'the pump was near.'
-      : verdict.tone === 'red'
-        ? 'the line won this one. running it back.'
-        : 'first trade on the books.';
+      : 'the line won this one. running it back.';
   const orbBit = summary.orbs === 1 ? '1 orb clipped' : `${summary.orbs} orbs clipped`;
-  const stake = sanitizeStake(summary.stake);
-  const money = moneyFor(summary.score, stake);
+  const currency = sanitizeCurrency(summary.currency);
+  const stake = currency === 'near' ? sanitizeNearStake(summary.stake) : sanitizeStake(summary.stake);
+  const head = settle.win
+    ? `called ${fmtBagMultiple(settle.barMult)} on pump rider, hit ${fmtBagMultiple(settle.multiple)}. ` +
+      `turned ${fmtUnitLower(stake, currency)} into ${fmtUnitLower(settle.payout, currency)}. `
+    : `called ${fmtBagMultiple(settle.barMult)} on pump rider, hit ${fmtBagMultiple(settle.multiple)}. ` +
+      `lost the ${fmtUnitLower(stake, currency)} bag. `;
   return (
-    `turned ${fmtMoney(stake)} into ${fmtMoney(money.payout)} on pump rider, ${fmtBagMultiple(money.multiple)}. ` +
+    head +
     `closed +${summary.score} pts. ` +
     `${summary.duration.toFixed(1)}s in trade, ${orbBit}, ` +
     `best combo ${fmtMultiplier(summary.bestMultiplier)}. ${closer}`
@@ -276,22 +415,42 @@ function shareTextFor(summary, verdict, isNewBest) {
 // Everything the PnL card renders, derived from one finished run.
 // Pure: the DOM card and the PNG painter both draw from this model, so
 // the downloaded card can never disagree with the screen.
+//
+// The card's identity is the money truth: the run graded against the
+// bar it called. Win and the card glows green with green majors; miss
+// the bar and it glows red — even if the run outscored the previous
+// one, because a missed bar means the bag is gone. The comparison to
+// the previous run survives only as the quiet note under the strip.
 export function buildCardData(summary, prev, isNewBest) {
-  const verdict = verdictFor(summary, prev, isNewBest);
-  const gainPct = gainPctFor(summary.score, prev);
-  const gainText = !prev
-    ? 'FIRST TRADE'
-    : gainPct !== null
-      ? fmtGainPct(gainPct)
-      : `${verdict.deltaVsPrev >= 0 ? '+' : ''}${verdict.deltaVsPrev} pts vs last`;
-  // The stake settlement: independent of the verdict (which grades
-  // against the previous run), this grades the run against the bag
-  // that rode on it. A summary with no stake recorded — a run from
-  // before the stake card existed — settles at the default stake.
-  const stake = sanitizeStake(summary.stake);
-  const money = moneyFor(summary.score, stake);
-  const moneyTone = money.pnl > 0 ? 'green' : money.pnl < 0 ? 'red' : 'flat';
-  const moneyText = `IN ${fmtMoney(stake)} → OUT ${fmtMoney(money.payout)} · ${fmtSignedMoney(money.pnl)}`;
+  // A summary with no stake or bar recorded — a run from before the
+  // bar existed — settles at the default stake and the default bar.
+  // The currency defaults to dollars for the same reason.
+  const currency = sanitizeCurrency(summary.currency);
+  const stake = currency === 'near' ? sanitizeNearStake(summary.stake) : sanitizeStake(summary.stake);
+  const target = sanitizeTarget(summary.target);
+  const settle = settleRun(summary.score, stake, target);
+  const win = settle.win;
+  const verdictLabel = win
+    ? `BAR CLEARED · ${fmtBagMultiple(settle.multiple)} vs ${fmtBagMultiple(settle.barMult)} bar`
+    : `MISSED THE BAR · ${fmtBagMultiple(settle.multiple)} of ${fmtBagMultiple(settle.barMult)}`;
+  const gainText = win ? fmtGainPct(settle.gainPct) : '−100%';
+  const moneyTone = settle.pnl > 0 ? 'green' : settle.pnl < 0 ? 'red' : 'flat';
+  // The strip speaks the active unit. In NEAR it also carries the
+  // dollar equivalent of the pnl alone — appended only when the whole
+  // line still fits the strip in both renderers.
+  let moneyText;
+  if (currency === 'near') {
+    const base =
+      `IN ${fmtAmount(stake, currency)} → OUT ${fmtAmount(settle.payout, currency)} · ${fmtSignedAmount(settle.pnl, currency)}`;
+    moneyText = base;
+    if (settle.pnl !== 0) {
+      const eq = Math.sign(settle.pnl) * Math.round(Math.abs(settle.pnl * NEAR_RATE));
+      const withEq = `${base} · ≈ ${fmtSignedMoney(eq)}`;
+      if (withEq.length <= 58) moneyText = withEq;
+    }
+  } else {
+    moneyText = `IN ${fmtMoney(stake)} → OUT ${fmtMoney(settle.payout)} · ${fmtSignedMoney(settle.pnl)}`;
+  }
   const footer = FOOTER_PUNS[
     Math.abs(summary.score * 7 + summary.orbs * 13 + Math.floor(summary.duration)) % FOOTER_PUNS.length
   ];
@@ -299,20 +458,28 @@ export function buildCardData(summary, prev, isNewBest) {
     preset: String(summary.preset || '').toUpperCase(),
     score: summary.score,
     heroText: `+${summary.score}`,
-    tone: verdict.tone,
-    verdictLabel: verdict.label,
+    win,
+    outcome: win ? 'win' : 'loss',
+    tone: win ? 'green' : 'red',
+    verdictLabel,
     isNewBest,
     timeInTrade: summary.duration,
     timeText: `${summary.duration.toFixed(1)}s`,
-    gainPct,
+    gainPct: settle.gainPct,
     gainText,
+    vsPrevText: vsPrevNote(summary, prev, isNewBest),
     bestMultiplier: summary.bestMultiplier,
     multText: fmtMultiplier(summary.bestMultiplier),
+    currency,
     stake,
-    multiple: money.multiple,
-    bagMultText: fmtBagMultiple(money.multiple),
-    payout: money.payout,
-    pnl: money.pnl,
+    target,
+    barMult: settle.barMult,
+    barMultText: fmtBagMultiple(settle.barMult),
+    needed: settle.needed,
+    multiple: settle.multiple,
+    bagMultText: fmtBagMultiple(settle.multiple),
+    payout: settle.payout,
+    pnl: settle.pnl,
     moneyTone,
     moneyText,
     tiles: [
@@ -323,27 +490,44 @@ export function buildCardData(summary, prev, isNewBest) {
     ],
     peakScore: summary.peakScore,
     footer,
-    shareText: shareTextFor(summary, verdict, isNewBest),
+    shareText: shareTextFor(summary, settle, isNewBest),
   };
 }
 
-// The chart, normalized to the unit square (x: 0..1 across the run's
-// duration, y: 0..1 up to the run's peak score) so any renderer — the
-// SVG on the card, the PNG painter — maps it onto its own box. Score
-// only ever climbs in this game, so the line always ends at the peak:
-// the crash point IS the high, exactly like the reference cards.
-export function chartModel(summary) {
-  const dur = Math.max(summary.duration, 1e-6);
-  const peak = Math.max(summary.peakScore, 1);
+// The chart, normalized to the unit square so any renderer — the SVG
+// on the card, the PNG painter — maps it onto its own box. TWO runs
+// share the frame on ONE common scale: the current run (the major
+// line) and the previous run (the quiet sub-line), so neither curve
+// is ever stretched to fill the box on its own. Both normalize
+// against the greater peak and the longer duration of the two, and
+// the scale also makes room for the called bar (needed pts), so the
+// dashed target line always sits inside the frame and a miss visibly
+// dies below it. Score only ever climbs in this game, so each line
+// ends at its own peak: a run's crash point IS its high.
+export function chartModel(summary, prev = null) {
+  const needed = targetPoints(summary.target);
+  const prevSamples = prev && Array.isArray(prev.samples) && prev.samples.length >= 2
+    ? prev.samples
+    : null;
+  const prevPeak = prevSamples
+    ? Math.max(prev.peakScore || 0, prevSamples[prevSamples.length - 1].score)
+    : 0;
+  const peak = Math.max(summary.peakScore, prevPeak, needed, 1);
+  const dur = Math.max(summary.duration, prevSamples ? (prev.duration || 0) : 0, 1e-6);
   const nx = (t) => Math.min(1, Math.max(0, t / dur));
   const ny = (s) => Math.min(1, Math.max(0, s / peak));
   const at = (t, s) => ({ x: nx(t), y: ny(s) });
   return {
     line: summary.samples.map((s) => at(s.t, s.score)),
+    prevLine: prevSamples ? prevSamples.map((s) => at(s.t, s.score)) : [],
+    hasPrev: !!prevSamples,
     orbs: summary.events.filter((e) => e.kind === 'orb').map((e) => at(e.t, e.score)),
     rugs: summary.events.filter((e) => e.kind === 'rugsurvived').map((e) => at(e.t, e.score)),
     crash: at(summary.duration, summary.score),
     peakScore: summary.peakScore,
     duration: summary.duration,
+    peakY: ny(summary.peakScore),
+    targetY: ny(needed),
+    needed,
   };
 }

@@ -19,6 +19,7 @@
       <h1>PUMP <span class="rider">RIDER</span></h1>
       <p class="tagline">Ride the memecoin chart. Hold to pump, let go to fall. Do not kiss the line.</p>
     </div>
+    <!--AFFIL--><span class="near-pill"><svg class="near-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5l14 14V5" fill="none" stroke-width="3.2" stroke-linecap="square"/></svg>ON NEAR</span><!--/AFFIL-->
   </div>
   <div class="stats">
     <div class="stat"><span class="k">Score</span><span class="v" id="stat-score">0</span></div>
@@ -29,8 +30,8 @@
   </div>
   <div class="actions">
     <button id="btn-pause" title="Pause (P)">Pause</button>
-    <button id="btn-sound" title="Toggle sound (M)">Sound: on</button>
-    <button id="btn-theme" title="Toggle dark / light theme">Theme: dark</button>
+    <button id="btn-sound" title="Sound on/off (M)" aria-label="Mute sound">🔊</button>
+    <button id="btn-theme" title="Toggle dark / light theme" aria-label="Switch to light theme">☀️</button>
   </div>
 </header>
 
@@ -38,12 +39,15 @@
   <div id="stage" class="stage">
     <canvas id="game"></canvas>
     <div id="rug-banner" class="rug-banner hidden">RUG PULL INBOUND</div>
-    <div id="paused-banner" class="paused-banner hidden">PAUSED — press P to ride on</div>
+    <div id="paused-banner" class="paused-banner hidden">PAUSED <button type="button" id="btn-resume" class="resume-btn" aria-label="Resume the run">▶ Resume</button> <span class="paused-hint">press P or Esc</span></div>
+    <button type="button" id="btn-pause-stage" class="pause-stage" aria-label="Pause the run" title="Pause (P)">⏸</button>
 
     <div id="overlay-start" class="overlay">
       <div class="card">
         <h2>Ride the chart</h2>
+        <!--AFFIL--><div class="near-accent" aria-hidden="true"></div><!--/AFFIL-->
         <p>hold to pump. let go to fall. do not kiss the line.</p>
+        <!--AFFIL--><p class="built-on"><svg class="near-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5l14 14V5" fill="none" stroke-width="3.2" stroke-linecap="square"/></svg>built on NEAR · NEAR Hackathon 2026</p><!--/AFFIL-->
         <div class="settings-panel">
           <button type="button" class="settings-head settings-toggle" id="btn-start-settings" aria-expanded="false">
             <span>Difficulty</span><span class="preset-name">Chill</span><span class="chev" aria-hidden="true">▸</span>
@@ -57,6 +61,7 @@
             <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
             <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
             <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+            <p class="vol-line">VOLATILITY MEDIUM · PAYOUT x1.00</p>
           </div>
         </div>
         <button id="btn-start" class="primary big">Start riding</button>
@@ -66,6 +71,12 @@
     <div id="overlay-stake" class="overlay stake hidden">
       <div class="card stake-card">
         <h2>how much are you willing to risk, ser?</h2>
+        <div class="cur-row">
+          <div class="cur-toggle" role="group" aria-label="Stake currency">
+            <button type="button" id="cur-usd" class="cur-btn active">$ USD</button>
+            <button type="button" id="cur-near" class="cur-btn">NEAR</button>
+          </div>
+        </div>
         <div class="stake-amountrow">
           <button type="button" id="btn-stake-minus" class="stake-step" aria-label="One step down the stake ladder">−</button>
           <div class="stake-amount" id="stake-amount">$10</div>
@@ -79,10 +90,25 @@
           <button type="button" class="stake-chip" data-stake="100">$100</button>
           <button type="button" class="stake-chip" data-stake="1000">$1,000</button>
         </div>
+        <p class="cur-rate hidden" id="cur-rate">1 near ≈ $3.63 · reference rate, nov 7</p>
         <p class="dim small">every 100 pts is 1x on your bag.</p>
+        <div class="target-block">
+          <h3 class="target-head">call your bar</h3>
+          <p class="target-sub">clear it and the bag pays out. miss it and the bag is gone.</p>
+          <div class="target-chips" id="target-chips">
+            <button type="button" class="target-chip" data-target="50">+50%</button>
+            <button type="button" class="target-chip" data-target="100">+100%</button>
+            <button type="button" class="target-chip" data-target="200">+200%</button>
+            <button type="button" class="target-chip" data-target="400">+400%</button>
+            <button type="button" class="target-chip" data-target="900">+900%</button>
+            <button type="button" class="target-chip" data-target="1900">+1900%</button>
+          </div>
+          <p class="target-need" id="target-need">you need 300 pts to clear the bar</p>
+        </div>
+        <p class="vol-line stake-vol">VOLATILITY MEDIUM · PAYOUT x1.00</p>
         <button id="btn-ape" class="primary big stake-ape">APE IN $10</button>
         <p class="stake-backrow"><button type="button" id="btn-ngmi" class="stake-back">ngmi</button></p>
-        <p class="dim small">Enter or Space apes in too.</p>
+        <p class="dim small stake-hint">Enter or Space apes in too.</p>
       </div>
     </div>
 
@@ -99,6 +125,7 @@
                 <path d="M20 36c1.5 3 6.5 3 8 0l-4 9z" fill="var(--logo-flame)"/>
               </svg>
               PUMP RIDER
+              <!--AFFIL--><span class="pnl-near"><svg class="near-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5l14 14V5" fill="none" stroke-width="3.2" stroke-linecap="square"/></svg>NEAR</span><!--/AFFIL-->
             </span>
             <span class="pnl-preset" id="pnl-preset">CHILL</span>
           </div>
@@ -117,6 +144,7 @@
             </div>
           </div>
           <div class="pnl-money flat" id="pnl-money">IN $10 → OUT $0 · −$10</div>
+          <div class="pnl-vs" id="pnl-vs">first trade</div>
           <div class="pnl-chartwrap">
             <svg class="pnl-chart" id="pnl-chart" viewBox="0 0 320 110" preserveAspectRatio="none" aria-label="Chart of this run's score"></svg>
             <span class="pnl-peak" id="pnl-peak">HIGH 0</span>
@@ -158,9 +186,13 @@
             <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
             <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
             <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+            <p class="vol-line">VOLATILITY MEDIUM · PAYOUT x1.00</p>
           </div>
         </div>
-        <button id="btn-again" class="primary big">run it back</button>
+        <div class="over-actions">
+          <button id="btn-again" class="primary big">run it back</button>
+          <button type="button" id="btn-reset" class="reset-btn">reset</button>
+        </div>
       </div>
     </div>
   </div>
@@ -177,10 +209,12 @@
       <li>The chart scrolls faster the longer you live. Your score is distance + orbs + bonuses.</li>
     </ol>
   </section>
+
+  <!--AFFIL--><p class="fan-note">pump rider is a fan made game built for the near hackathon 2026. not an official near protocol product.</p><!--/AFFIL-->
 </main>
 
 <footer>
-  <p>Built for NEAR HACKATHON 2026, Games track. A fully local arcade game:
+  <p><!--AFFIL-->Built for NEAR HACKATHON 2026, Games track. <!--/AFFIL-->A fully local arcade game:
   no wallet, no network, no dependencies. Open <code>dist/pump-rider.html</code> and ride. See README.</p>
 </footer>
 

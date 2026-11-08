@@ -93,6 +93,37 @@ strong { font-weight: 800; }
 }
 .brand { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .logo { width: 42px; height: 42px; flex: none; }
+/* NEAR attribution: the angular N glyph, drawn inline (no external
+   assets — the single-file build stays offline), in NEAR green. */
+.near-glyph { width: 11px; height: 11px; flex: none; }
+.near-glyph path { stroke: var(--best); }
+/* First-glance affiliation: the NEAR surfaces wear the brand
+   treatment — black with NEAR green — in both themes, so the
+   affiliation reads from colour before a single word does. */
+.near-pill {
+  display: inline-flex; align-items: center; gap: 5px; flex: none;
+  border: 1px solid #00ec97; border-radius: 999px; padding: 3px 9px;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .09em;
+  color: #00ec97; background: #000000; white-space: nowrap;
+}
+.near-pill .near-glyph path { stroke: #00ec97; }
+/* A slim NEAR-green accent bar under the start card's title. */
+.near-accent {
+  height: 3px; width: 56px; border-radius: 2px; margin: -2px 0 10px;
+  background: linear-gradient(90deg, var(--best), rgba(0, 236, 151, 0));
+  box-shadow: 0 0 12px rgba(0, 236, 151, .45);
+}
+.built-on {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--best); letter-spacing: .03em;
+}
+.built-on .near-glyph { width: 12px; height: 12px; }
+.fan-note { margin: 4px 2px 0; text-align: center; font-size: 11px; color: var(--dim); }
+.pnl-near {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 800; letter-spacing: .08em; color: var(--best);
+}
+.pnl-near .near-glyph { width: 10px; height: 10px; }
 .tagline { margin: 2px 0 0; color: var(--dim); font-size: 13px; }
 .stats { display: flex; gap: 8px; flex-wrap: nowrap; }
 .stat {
@@ -133,11 +164,15 @@ button.big { font-size: 16px; padding: 12px 22px; border-radius: 12px; }
 .stage {
   position: relative; border: 1px solid var(--line); border-radius: 16px;
   overflow: hidden; box-shadow: 0 18px 50px rgba(0, 0, 0, .25);
+  /* No long-press callout anywhere on the game surface: on iOS the
+     callout is what cancels a steady hold into pulses. */
+  -webkit-touch-callout: none;
 }
 canvas#game {
   display: block; width: 100%;
   height: min(70vh, 640px); min-height: 300px;
   touch-action: none; user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 @media (max-width: 520px) {
   canvas#game { height: 62vh; min-height: 340px; }
@@ -168,6 +203,25 @@ canvas#game {
   font-weight: 800; letter-spacing: .08em; padding: 8px 16px; border-radius: 10px;
   pointer-events: none; z-index: 4; white-space: nowrap; font-size: 14px;
 }
+/* The veil's own resume control (the banner itself lets presses
+   through; the button takes them). */
+.resume-btn {
+  pointer-events: auto; margin-left: 8px; padding: 4px 10px;
+  font-size: 12.5px; font-weight: 800; border-radius: 999px;
+}
+.paused-hint { opacity: .75; font-weight: 700; }
+/* The visible pause control: the stage's top-right corner, shown
+   only while a run is live (syncState keeps body[data-state]), and
+   layered above the paused veil so the same button resumes —
+   showing ▶ while paused. A 40px hit area, clear of the HUD row
+   above the stage by construction. */
+.pause-stage {
+  position: absolute; top: 10px; right: 10px; z-index: 6;
+  width: 40px; height: 40px; border-radius: 50%; padding: 0;
+  display: none; align-items: center; justify-content: center;
+  font-size: 16px; line-height: 1; background: var(--panel);
+}
+body[data-state="playing"] .pause-stage { display: inline-flex; }
 
 /* Overlay cards are complete boxes inside the stage frame: centred,
    a margin on every side (the overlay padding), full border and all
@@ -201,13 +255,13 @@ canvas#game {
 .overlay .card-over > * { flex: none; }
 .overlay .card-over > .pnl { flex: 0 1 auto; min-height: 0; }
 .overlay .card.card-over p { margin-bottom: 6px; }
-.overlay .card-over .settings-panel { margin: 8px 0; padding: 10px 12px; }
+.overlay .card-over .settings-panel { margin: 5px 0; padding: 6px 12px; }
 .overlay .card-over.settings-open .pnl-chartwrap { display: none; }
 .overlay .card-over.settings-open { overflow-y: auto; }
 
 /* The death headline: one short line, small type, never wraps. */
 .over-title {
-  margin: 0 0 8px; font-size: 15.5px; font-weight: 800; letter-spacing: .01em;
+  margin: 0 0 6px; font-size: 15.5px; font-weight: 800; letter-spacing: .01em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
@@ -217,7 +271,25 @@ canvas#game {
 .pnl {
   display: flex; flex-direction: column;
   background: var(--pnl-bg); border: 1px solid var(--line); border-radius: 14px;
-  padding: 10px 13px; overflow: hidden;
+  padding: 8px 13px; overflow: hidden;
+}
+/* The card's identity is the bar settlement, not the last run: a
+   green glow on a cleared bar, a red glow on a missed one, and the
+   hero follows — gold on a win, red on a loss. */
+.pnl.win { border-color: var(--best); box-shadow: 0 0 0 1px var(--best), 0 0 22px 2px rgba(0, 236, 151, .28); }
+.pnl.loss { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 0 22px 2px rgba(255, 82, 82, .25); }
+.pnl.loss .pnl-hero { color: var(--red); }
+/* Only the chart gives up height when the frame is tight: every
+   other block keeps its size. The money strip and the note line must
+   never be the thing that squashes to nothing. */
+.pnl > * { flex: none; }
+.pnl > .pnl-chartwrap { flex: 0 1 150px; }
+/* The demoted comparison to the previous run: one quiet line under
+   the money strip. */
+.pnl-vs {
+  margin-top: 3px; text-align: center;
+  font-size: 11px; font-weight: 600; color: var(--dim); letter-spacing: .02em; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pnl-head {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -226,35 +298,35 @@ canvas#game {
   display: inline-flex; align-items: center; gap: 6px;
   font-weight: 900; font-size: 13px; letter-spacing: .08em;
 }
-.pnl-logo { width: 18px; height: 18px; flex: none; }
+.pnl-logo { width: 16px; height: 16px; flex: none; }
 .pnl-preset { color: var(--neon); font-weight: 800; font-size: 11.5px; letter-spacing: .1em; }
 .pnl-herorow {
   /* The verdict pill gets its OWN line under the hero, never the same
      row: with a 4-digit score the old side-by-side row ran out of
      width and the pill painted over the hero's PTS. */
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 4px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; margin-top: 2px;
 }
 .pnl-hero {
-  font-size: 32px; font-weight: 900; line-height: 1.05; letter-spacing: .01em;
+  font-size: 30px; font-weight: 900; line-height: 1.05; letter-spacing: .01em;
   font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--score);
 }
 .pnl-hero .pnl-pts { font-size: 14px; font-weight: 800; color: var(--dim); margin-left: 5px; letter-spacing: .08em; }
 .pnl-verdict {
   text-align: center;
   font-weight: 800; font-size: 10px; letter-spacing: .05em; line-height: 1.3;
-  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line);
+  padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line);
 }
 .pnl-verdict.green { color: var(--best); border-color: var(--best); }
 .pnl-verdict.red { color: var(--red); border-color: var(--red); }
 .pnl-verdict.flat { color: var(--dim); }
 .pnl-sub {
-  display: flex; justify-content: space-between; gap: 10px; margin-top: 7px;
+  display: flex; justify-content: space-between; gap: 10px; margin-top: 4px;
 }
 .pnl-substat .pk {
   display: block; font-size: 9.5px; color: var(--dim);
-  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 1px;
+  text-transform: uppercase; letter-spacing: .07em; margin-bottom: 0;
 }
-.pnl-substat b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pnl-substat b { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pnl-right { text-align: right; }
 .pnl-gainline { display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap; }
 .pnl-gain.green { color: var(--best); }
@@ -265,7 +337,7 @@ canvas#game {
    difference — full width under the time/gain row, toned by its own
    result (up green, down red, break-even neutral). */
 .pnl-money {
-  margin-top: 6px; padding: 4px 8px; text-align: center;
+  margin-top: 4px; padding: 3px 8px; text-align: center;
   background: var(--pnl-panel); border: 1px solid var(--line); border-radius: 9px;
   font-size: 12.5px; font-weight: 800; letter-spacing: .02em;
   font-variant-numeric: tabular-nums; white-space: nowrap;
@@ -275,7 +347,7 @@ canvas#game {
 .pnl-money.red { color: var(--red); }
 .pnl-money.flat { color: var(--dim); }
 .pnl-chartwrap {
-  position: relative; flex: 0 1 76px; min-height: 38px; margin-top: 7px;
+  position: relative; flex: 0 1 150px; min-height: 64px; margin-top: 6px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--pnl-panel);
   overflow: hidden;
 }
@@ -288,29 +360,29 @@ canvas#game {
   font-variant-numeric: tabular-nums; pointer-events: none;
 }
 .pnl-tiles {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 7px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 5px;
 }
 .pnl-tile {
   background: var(--pnl-panel); border: 1px solid var(--line); border-radius: 10px;
-  padding: 5px 2px 4px; text-align: center; color: var(--dim);
+  padding: 3px 2px; text-align: center; color: var(--dim);
 }
-.pnl-tile svg { width: 14px; height: 14px; display: block; margin: 0 auto 1px; }
+.pnl-tile svg { width: 11px; height: 11px; display: block; margin: 0 auto; }
 .pnl-tile svg text { fill: var(--pnl-bg); }
 .pnl-tile b {
   display: block; font-size: 13.5px; font-weight: 800; color: var(--ink);
-  font-variant-numeric: tabular-nums; line-height: 1.2;
+  font-variant-numeric: tabular-nums; line-height: 1.1;
 }
-.pnl-tile span { display: block; font-size: 8.5px; text-transform: uppercase; letter-spacing: .05em; }
+.pnl-tile span { display: block; font-size: 8.5px; text-transform: uppercase; letter-spacing: .05em; line-height: 1.15; }
 .pnl-tile:nth-child(1) svg { color: var(--neon); }
 .pnl-tile:nth-child(2) svg { color: var(--gold); }
 .pnl-tile:nth-child(3) svg { color: var(--pink); }
 .pnl-tile:nth-child(4) svg { color: var(--red); }
 .pnl-foot {
-  margin: 6px 0 0 !important; text-align: center;
-  font-size: 11.5px; font-weight: 700; color: var(--dim);
+  margin: 3px 0 0 !important; text-align: center;
+  font-size: 11px; font-weight: 700; color: var(--dim); line-height: 1.25;
 }
-.pnl-actions { display: flex; gap: 8px; margin-top: 8px; }
-.pnl-actions button { flex: 1; padding: 8px 10px; font-size: 13.5px; }
+.pnl-actions { display: flex; gap: 8px; margin-top: 4px; }
+.pnl-actions button { flex: 1; padding: 6px 10px; font-size: 13.5px; }
 
 /* Collapsible difficulty panels (both cards, closed by default):
    one tappable row. */
@@ -326,25 +398,81 @@ canvas#game {
    sits big between the ladder steppers; the chips below are the same
    ladder, and chip and stepper never disagree. */
 .stake-card { text-align: center; }
-.stake-card h2 { font-size: 19px; }
+.overlay .stake-card { padding: 12px 18px; }
+.stake-card h2 { font-size: 16px; margin-bottom: 4px; line-height: 1.15; }
+/* The currency switch: a segmented $ / NEAR toggle above the
+   amount. The stake, the ladders and the whole settlement follow
+   the active unit (recap.js owns the conversion). */
+.cur-row { display: flex; justify-content: center; margin: 4px 0 0; }
+.cur-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.cur-btn {
+  border: none; border-radius: 0; background: transparent; box-shadow: none;
+  padding: 3px 14px; font-size: 12px; font-weight: 800; letter-spacing: .05em; color: var(--dim);
+}
+.cur-btn.active { background: var(--neon); color: #032117; }
+:root[data-theme="light"] .cur-btn.active { color: #ffffff; }
+.cur-rate { margin: 4px 0 0 !important; font-size: 11.5px; color: var(--dim); }
 .stake-amountrow {
-  display: flex; align-items: center; justify-content: center; gap: 18px; margin: 8px 0 2px;
+  display: flex; align-items: center; justify-content: center; gap: 18px; margin: 2px 0 0;
 }
 .stake-amount {
-  font-size: 42px; font-weight: 900; line-height: 1; color: var(--score);
-  font-variant-numeric: tabular-nums; min-width: 128px;
+  font-size: 36px; font-weight: 900; line-height: 1; color: var(--score);
+  font-variant-numeric: tabular-nums; min-width: 112px; white-space: nowrap;
 }
+/* In NEAR mode the amount carries its unit ("2.75 NEAR") — a touch
+   smaller so the row never wraps between the steppers. */
+.stake-card.near-mode .stake-amount { font-size: 32px; }
+.stake-card.near-mode .stake-chip { font-size: 13px; }
 .stake-step {
   width: 42px; height: 42px; border-radius: 50%; padding: 0; flex: none;
   font-size: 22px; font-weight: 900; line-height: 1;
 }
 .stake-step:disabled { opacity: .3; cursor: default; }
 .stake-step:disabled:hover { border-color: var(--line); }
-.stake-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 10px 0; }
-.stake-chip { padding: 8px 4px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stake-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
+.stake-chip { padding: 4px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .stake-chip.active { border-color: var(--neon); color: var(--neon); box-shadow: inset 0 0 0 1px var(--neon); }
-.stake-ape { width: 100%; }
-.stake-backrow { margin: 8px 0 2px !important; }
+/* The called bar gets its own panel on the stake card, under its own
+   heading, in gold — a different accent from the stake's green so the
+   two pickers never blur together. Two rows of three chips. */
+.target-block {
+  margin: 5px 0 3px; padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--panel);
+}
+.target-head {
+  margin: 0; font-size: 15px; font-weight: 900;
+  text-transform: uppercase; letter-spacing: .1em; color: var(--gold);
+}
+.target-sub { margin: 2px 0 6px !important; font-size: 12px; color: var(--dim); }
+.target-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.target-chip { padding: 4px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.target-chip.active { border-color: var(--gold); color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+.target-need { margin: 5px 0 0 !important; font-size: 13px; font-weight: 800; color: var(--ink); }
+/* The volatility readout: shown wherever the difficulty trade-off
+   is chosen — both difficulty panels and the stake card — and kept
+   live by app.js as the sliders move. */
+.vol-line {
+  margin: 8px 0 0; text-align: center;
+  font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--dim);
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.stake-vol { margin: 0 0 4px; }
+.stake-ape { width: 100%; padding-top: 9px; padding-bottom: 9px; }
+/* Game-over exits: run it back (to the stake card, never straight
+   into a run) and the two-step reset beside it. */
+.over-actions { display: flex; gap: 8px; align-items: stretch; }
+.over-actions .big { padding: 10px 22px; }
+.over-actions #btn-again { flex: 1; }
+.reset-btn { color: var(--dim); font-weight: 700; white-space: nowrap; }
+.reset-btn.armed {
+  color: #ffffff; background: var(--red); border-color: var(--red); font-weight: 800;
+  animation: resetpulse .6s ease-in-out infinite alternate;
+}
+@keyframes resetpulse {
+  from { box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+  to { box-shadow: 0 0 14px 2px rgba(255, 82, 82, .55); }
+}
+.stake-backrow { margin: 6px 0 2px !important; }
 .stake-back {
   background: none; border: none; padding: 2px 6px; cursor: pointer;
   color: var(--dim); font-size: 13.5px; font-weight: 700; text-decoration: underline;
@@ -377,7 +505,16 @@ canvas#game {
 }
 .warn-text { color: var(--red); font-weight: 800; }
 
-.toast { min-height: 22px; margin: 10px 2px 0; color: var(--gold); font-size: 14.5px; font-weight: 700; }
+/* The toast floats: a fixed pill over the page bottom, never in the
+   layout flow, so it costs the stage no height. */
+.toast {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  z-index: 60; margin: 0; padding: 6px 14px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line);
+  color: var(--gold); font-size: 14.5px; font-weight: 700;
+  white-space: nowrap; pointer-events: none;
+}
+.toast:empty { display: none; }
 .panel {
   background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
   padding: 14px 16px; margin: 12px 0 18px;
@@ -390,6 +527,9 @@ canvas#game {
 .howto ol {
   margin: 0; padding-left: 17px; color: var(--dim); font-size: 12.5px; line-height: 1.4;
   max-height: 138px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px;
+  /* The strip owns its vertical pan, by construction: no ancestor
+     gesture handling may claim it, in either direction. */
+  touch-action: pan-y; -webkit-overflow-scrolling: touch;
 }
 .howto li { margin-bottom: 4px; }
 .howto li:last-child { margin-bottom: 0; }
@@ -405,6 +545,9 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
 @media (max-width: 760px) {
   body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
   .brand .tagline { display: none; }
+  /* Phones are the tight stage: the keyboard hint is garnish there
+     (the keys still work), and the stake card needs the room. */
+  .stake-hint { display: none; }
   .logo { width: 32px; height: 32px; }
   h1 { font-size: 20px; }
   .actions button { padding: 6px 9px; font-size: 12.5px; }
@@ -414,7 +557,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
   }
   .stage { flex: 1 1 auto; min-height: 0; }
   canvas#game { height: 100%; min-height: 0; }
-  .toast { flex: none; min-height: 18px; margin: 4px 2px 0; font-size: 13px; }
+  .toast { font-size: 13px; bottom: 10px; }
   .howto { flex: none; margin: 6px 0 2px; padding: 7px 12px 8px; }
   .howto h2 { font-size: 13px; margin-bottom: 2px; }
   .howto ol { max-height: 60px; }
@@ -429,33 +572,63 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
 @media (max-width: 760px) and (max-height: 740px) {
   .overlay { padding: 8px; }
   .overlay .card { padding: 12px 14px; }
-  .overlay .card-over { padding: 7px 10px; }
-  .over-title { font-size: 14px; margin-bottom: 4px; }
-  .pnl { padding: 6px 10px; }
-  .pnl-brand { font-size: 12px; }
+  .overlay .card-over { padding: 5px 10px; }
+  .over-title { font-size: 14px; margin-bottom: 1px; }
+  .pnl { padding: 3px 10px; }
+  .pnl-brand { font-size: 11.5px; }
   .pnl-logo { width: 15px; height: 15px; }
-  .pnl-herorow { margin-top: 2px; gap: 3px; }
-  .pnl-hero { font-size: 22px; }
+  .pnl-herorow { margin-top: 1px; gap: 2px; }
+  .pnl-hero { font-size: 19px; }
   .pnl-verdict { font-size: 9.5px; padding: 2px 7px; }
-  .pnl-sub { margin-top: 3px; }
+  .pnl-sub { margin-top: 2px; }
   .pnl-substat .pk { font-size: 8.5px; }
-  .pnl-substat b { font-size: 13.5px; }
-  .pnl-money { margin-top: 3px; padding: 1px 6px; font-size: 11.5px; }
-  .stake-amount { font-size: 32px; min-width: 104px; }
-  .stake-step { width: 36px; height: 36px; font-size: 19px; }
-  .stake-chips { margin: 7px 0; }
-  .stake-chip { padding: 6px 4px; }
-  .pnl-chartwrap { flex-basis: 20px; min-height: 6px; margin-top: 4px; }
-  .pnl-tiles { margin-top: 2px; gap: 4px; }
-  .pnl-tile { padding: 3px 2px 2px; }
-  .pnl-tile svg { width: 11px; height: 11px; }
-  .pnl-tile b { font-size: 12px; }
+  .pnl-substat b { font-size: 12.5px; }
+  .pnl-money { margin-top: 1px; padding: 1px 6px; font-size: 11px; }
+  .stake-amount { font-size: 30px; min-width: 104px; }
+  .stake-card.near-mode .stake-amount { font-size: 27px; }
+  .stake-step { width: 30px; height: 30px; font-size: 16px; }
+  .stake-chips { margin: 3px 0; gap: 4px; }
+  .stake-chip { padding: 3px; line-height: 1.05; }
+  /* The currency row joins the card in this band too: slimmer
+     toggle, slimmer rate line, and the explanatory rule line goes
+     (the need line below already says what the bar takes). */
+  .cur-row { margin-top: 2px; }
+  .cur-btn { padding: 2px 12px; font-size: 11px; }
+  .cur-rate { font-size: 10.5px; margin-top: 0 !important; }
+  .stake-card > p.small { display: none; }
+  .stake-ape { padding-top: 6px; padding-bottom: 6px; }
+  .stake-back { padding: 2px 10px; }
+  /* The stake card is taller now (the bar picker lives on it) and it
+     must still fit WHOLE inside the stage at 660px: heading, chips,
+     need line and APE IN all stay — the garnish lines go instead. */
+  .overlay .stake-card { padding: 9px 14px; }
+  .stake-card h2 { font-size: 14px; margin-bottom: 0; }
+  .stake-amountrow { margin-top: 2px; }
+  .stake-card p.small { margin-bottom: 6px; }
+  .stake-backrow { margin: 2px 0 0 !important; }
+  .vol-line { font-size: 10.5px; }
+  .stake-vol { margin-bottom: 3px; }
+  .target-block { margin: 3px 0; padding: 3px 8px 2px; }
+  .target-head { font-size: 13.5px; }
+  .target-sub { display: none; }
+  .target-chips { gap: 4px; }
+  .target-chip { padding: 2px 4px; font-size: 13px; line-height: 1.1; }
+  .target-need { margin-top: 3px !important; font-size: 12.5px; }
+  .stake-hint { display: none; }
+  .pnl-vs { font-size: 10.5px; margin-top: 0; }
+  .pnl-chartwrap { flex-basis: 44px; min-height: 24px; margin-top: 2px; }
+  .pnl-tiles { margin-top: 0; gap: 4px; }
+  .pnl-tile { padding: 2px 2px 1px; }
+  .pnl-tile svg { display: none; }
+  .pnl-tile b { font-size: 11.5px; }
   .pnl-tile span { font-size: 7.5px; }
-  .pnl-foot { margin-top: 2px !important; font-size: 10.5px; }
-  .pnl-actions { margin-top: 5px; }
-  .pnl-actions button { padding: 5px 8px; font-size: 12.5px; }
-  .overlay .card-over .settings-panel { margin: 5px 0; padding: 5px 10px; }
-  button.big { padding: 8px 18px; font-size: 15px; }
+  .pnl-foot { margin-top: 0 !important; font-size: 10px; }
+  .pnl-actions { margin-top: 3px; }
+  .pnl-actions button { padding: 4px 8px; font-size: 12.5px; }
+  .over-actions .big { padding: 8px 16px; }
+  .overlay .card-over .settings-panel { margin: 3px 0; padding: 3px 10px; }
+  .over-actions .big { padding: 7px 16px; }
+  button.big { padding: 7px 18px; font-size: 15px; }
 }
 
 </style>
@@ -473,6 +646,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
       <h1>PUMP <span class="rider">RIDER</span></h1>
       <p class="tagline">Ride the memecoin chart. Hold to pump, let go to fall. Do not kiss the line.</p>
     </div>
+    <span class="near-pill"><svg class="near-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5l14 14V5" fill="none" stroke-width="3.2" stroke-linecap="square"/></svg>ON NEAR</span>
   </div>
   <div class="stats">
     <div class="stat"><span class="k">Score</span><span class="v" id="stat-score">0</span></div>
@@ -483,8 +657,8 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
   </div>
   <div class="actions">
     <button id="btn-pause" title="Pause (P)">Pause</button>
-    <button id="btn-sound" title="Toggle sound (M)">Sound: on</button>
-    <button id="btn-theme" title="Toggle dark / light theme">Theme: dark</button>
+    <button id="btn-sound" title="Sound on/off (M)" aria-label="Mute sound">🔊</button>
+    <button id="btn-theme" title="Toggle dark / light theme" aria-label="Switch to light theme">☀️</button>
   </div>
 </header>
 
@@ -492,12 +666,15 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
   <div id="stage" class="stage">
     <canvas id="game"></canvas>
     <div id="rug-banner" class="rug-banner hidden">RUG PULL INBOUND</div>
-    <div id="paused-banner" class="paused-banner hidden">PAUSED — press P to ride on</div>
+    <div id="paused-banner" class="paused-banner hidden">PAUSED <button type="button" id="btn-resume" class="resume-btn" aria-label="Resume the run">▶ Resume</button> <span class="paused-hint">press P or Esc</span></div>
+    <button type="button" id="btn-pause-stage" class="pause-stage" aria-label="Pause the run" title="Pause (P)">⏸</button>
 
     <div id="overlay-start" class="overlay">
       <div class="card">
         <h2>Ride the chart</h2>
+        <div class="near-accent" aria-hidden="true"></div>
         <p>hold to pump. let go to fall. do not kiss the line.</p>
+        <p class="built-on"><svg class="near-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5l14 14V5" fill="none" stroke-width="3.2" stroke-linecap="square"/></svg>built on NEAR · NEAR Hackathon 2026</p>
         <div class="settings-panel">
           <button type="button" class="settings-head settings-toggle" id="btn-start-settings" aria-expanded="false">
             <span>Difficulty</span><span class="preset-name">Chill</span><span class="chev" aria-hidden="true">▸</span>
@@ -511,6 +688,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
             <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
             <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
             <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+            <p class="vol-line">VOLATILITY MEDIUM · PAYOUT x1.00</p>
           </div>
         </div>
         <button id="btn-start" class="primary big">Start riding</button>
@@ -520,6 +698,12 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
     <div id="overlay-stake" class="overlay stake hidden">
       <div class="card stake-card">
         <h2>how much are you willing to risk, ser?</h2>
+        <div class="cur-row">
+          <div class="cur-toggle" role="group" aria-label="Stake currency">
+            <button type="button" id="cur-usd" class="cur-btn active">$ USD</button>
+            <button type="button" id="cur-near" class="cur-btn">NEAR</button>
+          </div>
+        </div>
         <div class="stake-amountrow">
           <button type="button" id="btn-stake-minus" class="stake-step" aria-label="One step down the stake ladder">−</button>
           <div class="stake-amount" id="stake-amount">$10</div>
@@ -533,10 +717,25 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
           <button type="button" class="stake-chip" data-stake="100">$100</button>
           <button type="button" class="stake-chip" data-stake="1000">$1,000</button>
         </div>
+        <p class="cur-rate hidden" id="cur-rate">1 near ≈ $3.63 · reference rate, nov 7</p>
         <p class="dim small">every 100 pts is 1x on your bag.</p>
+        <div class="target-block">
+          <h3 class="target-head">call your bar</h3>
+          <p class="target-sub">clear it and the bag pays out. miss it and the bag is gone.</p>
+          <div class="target-chips" id="target-chips">
+            <button type="button" class="target-chip" data-target="50">+50%</button>
+            <button type="button" class="target-chip" data-target="100">+100%</button>
+            <button type="button" class="target-chip" data-target="200">+200%</button>
+            <button type="button" class="target-chip" data-target="400">+400%</button>
+            <button type="button" class="target-chip" data-target="900">+900%</button>
+            <button type="button" class="target-chip" data-target="1900">+1900%</button>
+          </div>
+          <p class="target-need" id="target-need">you need 300 pts to clear the bar</p>
+        </div>
+        <p class="vol-line stake-vol">VOLATILITY MEDIUM · PAYOUT x1.00</p>
         <button id="btn-ape" class="primary big stake-ape">APE IN $10</button>
         <p class="stake-backrow"><button type="button" id="btn-ngmi" class="stake-back">ngmi</button></p>
-        <p class="dim small">Enter or Space apes in too.</p>
+        <p class="dim small stake-hint">Enter or Space apes in too.</p>
       </div>
     </div>
 
@@ -553,6 +752,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
                 <path d="M20 36c1.5 3 6.5 3 8 0l-4 9z" fill="var(--logo-flame)"/>
               </svg>
               PUMP RIDER
+              <span class="pnl-near"><svg class="near-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5l14 14V5" fill="none" stroke-width="3.2" stroke-linecap="square"/></svg>NEAR</span>
             </span>
             <span class="pnl-preset" id="pnl-preset">CHILL</span>
           </div>
@@ -571,6 +771,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
             </div>
           </div>
           <div class="pnl-money flat" id="pnl-money">IN $10 → OUT $0 · −$10</div>
+          <div class="pnl-vs" id="pnl-vs">first trade</div>
           <div class="pnl-chartwrap">
             <svg class="pnl-chart" id="pnl-chart" viewBox="0 0 320 110" preserveAspectRatio="none" aria-label="Chart of this run's score"></svg>
             <span class="pnl-peak" id="pnl-peak">HIGH 0</span>
@@ -612,9 +813,13 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
             <label class="slider-row"><span>Speed</span><input type="range" class="js-slider" data-setting="speed" min="0.5" max="1.5" step="0.05" value="0.7"><b class="slider-val" data-val="speed">0.70x</b></label>
             <label class="slider-row"><span>Pump</span><input type="range" class="js-slider" data-setting="pump" min="0.5" max="1.8" step="0.05" value="0.85"><b class="slider-val" data-val="pump">0.85x</b></label>
             <label class="slider-row"><span>Gravity</span><input type="range" class="js-slider" data-setting="gravity" min="0.5" max="1.8" step="0.05" value="0.8"><b class="slider-val" data-val="gravity">0.80x</b></label>
+            <p class="vol-line">VOLATILITY MEDIUM · PAYOUT x1.00</p>
           </div>
         </div>
-        <button id="btn-again" class="primary big">run it back</button>
+        <div class="over-actions">
+          <button id="btn-again" class="primary big">run it back</button>
+          <button type="button" id="btn-reset" class="reset-btn">reset</button>
+        </div>
       </div>
     </div>
   </div>
@@ -631,6 +836,8 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: .92em; }
       <li>The chart scrolls faster the longer you live. Your score is distance + orbs + bonuses.</li>
     </ol>
   </section>
+
+  <p class="fan-note">pump rider is a fan made game built for the near hackathon 2026. not an official near protocol product.</p>
 </main>
 
 <footer>
@@ -705,6 +912,29 @@ const PRESETS = {
   degen: { speedScale: 1.3, gravity: 1.25, thrust: 1.25 },
 };
 
+// Volatility coupling --------------------------------------------------------
+// Difficulty IS market volatility: the settings bend not only how the
+// rocket flies but how fast points accrue. Every point a run earns —
+// distance, orbs, close calls, the rug bonus — is scaled by ONE payout
+// factor derived from the three multipliers: the geometric mean of
+// (speedScale, thrust, gravity), power-curved. Calibrated by
+// measurement with the test pilot (see test group 16): classic
+// (all 1s) pays exactly x1.00, the slider floor (all 0.5s) pays x0.75,
+// the ceiling (1.5 / 1.8 / 1.8) pays x1.25 — and a competent pilot
+// banks roughly 120 pts in 10s at the floor, ~150 in 5s at classic,
+// ~300 in 5s at the ceiling. The curve is deliberately gentler than
+// the raw settings span: the physics themselves already accrue ~3x
+// faster per second at the ceiling than at the floor, so a steeper
+// factor would overshoot the ceiling band and starve the floor.
+const PAYOUT_CURVE = 0.42;
+function payoutFactorFor(settings) {
+  const st = settings || {};
+  const geo = Math.cbrt(
+    (st.speedScale ?? 1) * (st.thrust ?? 1) * (st.gravity ?? 1),
+  );
+  return Math.pow(geo, PAYOUT_CURVE);
+}
+
 // Rug pulls ------------------------------------------------------------------
 const RUG_WARN_TIME = 1.1; // seconds of flashing warning first
 const RUG_ACTIVE_TIME = 4.2; // seconds from drop to "survived"
@@ -751,6 +981,7 @@ function createGame(seed, opts = {}) {
     gravity, // effective downward accel for this run
     netThrust, // effective upward accel while holding, net of gravity
     speedScale,
+    payoutFactor: payoutFactorFor(st), // volatility: scales every point earned
     time: 0,
     x: 60,
     y: 0, // set below, once the launch pad exists
@@ -921,7 +1152,7 @@ function step(state, dt, thrust) {
     state.closeCd <= 0 &&
     state.time > 1.5
   ) {
-    state.bonusScore += CLOSE_BONUS;
+    state.bonusScore += Math.round(CLOSE_BONUS * state.payoutFactor);
     state.closeCd = CLOSE_COOLDOWN;
     events.push({ type: 'closecall', gap });
   }
@@ -932,7 +1163,8 @@ function step(state, dt, thrust) {
   }
 
   state.score =
-    Math.floor(state.x / SCORE_PER_UNIT) + state.orbScore + state.bonusScore;
+    Math.floor((state.x * state.payoutFactor) / SCORE_PER_UNIT) +
+    state.orbScore + state.bonusScore;
   return events;
 }
 
@@ -964,7 +1196,7 @@ function stepRug(state, dt, events) {
     if (state.rugT <= 0) {
       state.rugPhase = 'idle';
       state.nextRugIn = 15 + state.rng() * 13;
-      state.bonusScore += RUG_BONUS;
+      state.bonusScore += Math.round(RUG_BONUS * state.payoutFactor);
       events.push({ type: 'rugsurvived' });
     }
   }
@@ -993,7 +1225,7 @@ function stepOrbs(state, events) {
         COMBO_CAP,
         1 + (state.combo - 1) * COMBO_STEP,
       );
-      const points = Math.round(ORB_BASE * state.multiplier);
+      const points = Math.round(ORB_BASE * state.multiplier * state.payoutFactor);
       state.orbScore += points;
       state.orbsCollected += 1;
       events.push({
@@ -1012,8 +1244,8 @@ function stepOrbs(state, events) {
 // recap.js — the post-run PnL card data: a pure, DOM-free recorder that
 // turns one run of Pump Rider into a run summary (stats, a score-over-
 // time sample series, chart markers), plus the shareable "PnL card"
-// model the game-over screen renders, and the verdict that grades the
-// run against the player's previous one.
+// model the game-over screen renders, and the settlement that grades
+// the run against the target bar the player called before it started.
 //
 // The app feeds it the engine's own events (see engine.js step()) as
 // they happen and ticks it with the live state every frame; every
@@ -1030,8 +1262,8 @@ function stepOrbs(state, events) {
 // exactly at the crash — finish() always lands the final sample there.
 
 const MAX_LOG_EVENTS = 200;
-const MAX_SAMPLES = 720;
-const SAMPLE_EVERY = 0.25; // seconds between chart samples
+const MAX_SAMPLES = 1440;
+const SAMPLE_EVERY = 0.12; // seconds between chart samples — fine enough that orb steps and rug jumps stay visible as steps in the line
 const LAST_RUN_KEY = 'pump-rider-last-run';
 
 // ------------------------------------------------------------------ stake
@@ -1053,6 +1285,75 @@ function stepStakeIndex(index, dir) {
   return Math.min(STAKE_LADDER.length - 1, Math.max(0, index + Math.sign(dir)));
 }
 
+// ------------------------------------------------------------- currency
+// The stake — and everything it settles into — can be denominated in
+// dollars or in NEAR. The math never changes (payout = stake x
+// multiple in whichever unit is active); only the ladders, the
+// stepper steps and the formatting do. The rate is a fixed reference
+// (1 NEAR = $3.63, fetched 2026-11-07 for the thesis board): the game
+// is fully offline and never pretends the rate is live.
+const NEAR_RATE = 3.63;
+const CURRENCY_KEY = 'pump-rider-currency';
+const NEAR_LADDER = [1, 5, 10, 50, 100, 250];
+const DEFAULT_NEAR_STAKE = 10;
+
+function sanitizeCurrency(v) {
+  return v === 'near' ? 'near' : 'usd';
+}
+function sanitizeNearStake(v) {
+  if (!Number.isFinite(v)) return DEFAULT_NEAR_STAKE;
+  return Math.min(1000, Math.max(0.5, Math.round(v * 100) / 100));
+}
+// Switching units converts the stake at the reference rate. Into
+// NEAR: two decimals under 10 NEAR, whole numbers at or above.
+// Into dollars: whole dollars, snapped to the nearest USD ladder
+// rung (log-nearest, so the relative distortion is smallest) — the
+// USD chips and stepper stay the one source of truth there.
+function usdToNear(usd) {
+  const raw = usd / NEAR_RATE;
+  return raw < 10 ? Math.round(raw * 100) / 100 : Math.round(raw);
+}
+function nearToUsd(near) {
+  const raw = Math.round(near * NEAR_RATE);
+  let rung = STAKE_LADDER[0];
+  let bestDist = Infinity;
+  for (const candidate of STAKE_LADDER) {
+    const d = Math.abs(Math.log(raw / candidate));
+    if (d < bestDist) { bestDist = d; rung = candidate; }
+  }
+  return rung;
+}
+// The NEAR stepper: half-NEAR steps under 10, then steps of 5.
+function stepNearStake(v, dir) {
+  const cur = sanitizeNearStake(v);
+  const step = dir > 0 ? (cur >= 10 ? 5 : 0.5) : (cur > 10 ? 5 : 0.5);
+  return sanitizeNearStake(cur + Math.sign(dir) * step);
+}
+// A NEAR amount as bare grouped digits (the unit is added by
+// fmtAmount): integers plain, fractions to two decimals.
+function fmtNear(v) {
+  const a = Math.abs(v);
+  const fixed = Number.isInteger(a) ? String(a) : a.toFixed(2);
+  const [int, dec] = fixed.split('.');
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${grouped}${dec ? `.${dec}` : ''}`;
+}
+function fmtAmount(v, currency) {
+  return currency === 'near' ? `${fmtNear(v)} NEAR` : fmtMoney(v);
+}
+function fmtSignedAmount(v, currency) {
+  if (currency === 'near') {
+    if (v > 0) return `+${fmtNear(v)} NEAR`;
+    if (v < 0) return `−${fmtNear(v)} NEAR`;
+    return '0 NEAR';
+  }
+  return fmtSignedMoney(v);
+}
+// The share-text form of an amount, in the player's lowercase voice.
+function fmtUnitLower(v, currency) {
+  return currency === 'near' ? `${fmtNear(v)} near` : fmtMoney(v);
+}
+
 // The money a finished run made: the multiple is the score in
 // hundreds, payout and pnl in dollars, rounded to the cent so the
 // card's arithmetic adds up exactly as printed.
@@ -1061,6 +1362,50 @@ function moneyFor(score, stake) {
   const payout = Math.round(stake * multiple * 100) / 100;
   const pnl = Math.round((payout - stake) * 100) / 100;
   return { multiple, payout, pnl };
+}
+
+// ------------------------------------------------------------- the bar
+// Before the run the player also calls a target bar: a gain over the
+// stake they promise themselves (+50% ... +1900%). The bar is the
+// run's real grading: clear it (score >= the points it implies) and
+// the bag pays out at the run's multiple; miss it and the whole bag
+// is gone, however far the run got. Pure helpers — the stake card UI
+// in app.js walks this same ladder.
+const TARGET_LADDER = [50, 100, 200, 400, 900, 1900];
+const DEFAULT_TARGET = 200;
+const TARGET_KEY = 'pump-rider-target';
+
+function sanitizeTarget(v) {
+  return TARGET_LADDER.includes(v) ? v : DEFAULT_TARGET;
+}
+function targetIndexOf(pct) {
+  return TARGET_LADDER.indexOf(sanitizeTarget(pct));
+}
+function stepTargetIndex(index, dir) {
+  return Math.min(TARGET_LADDER.length - 1, Math.max(0, index + Math.sign(dir)));
+}
+// The multiple the bar demands: +200% over the stake means the bag
+// must come back 3x, and at 100 pts per 1x that is 300 pts.
+function targetMultiple(pct) {
+  return 1 + sanitizeTarget(pct) / 100;
+}
+function targetPoints(pct) {
+  return 100 * targetMultiple(pct);
+}
+
+// Settlement v2: a finished run graded against the called bar.
+// Clearing the bar (an exact hit counts) pays stake x multiple;
+// missing it pays nothing — the run still happened, the chart still
+// shows how far it got, but the bag is lost whole.
+function settleRun(score, stake, targetPct) {
+  const multiple = score / 100;
+  const barMult = targetMultiple(targetPct);
+  const needed = targetPoints(targetPct);
+  const win = score >= needed;
+  const payout = win ? Math.round(stake * multiple * 100) / 100 : 0;
+  const pnl = Math.round((payout - stake) * 100) / 100;
+  const gainPct = win ? Math.round((multiple - 1) * 10000) / 100 : -100;
+  return { multiple, barMult, needed, win, payout, pnl, gainPct };
 }
 
 // "$1,000" for whole dollars, "$10.81" when there are cents, always
@@ -1100,6 +1445,22 @@ function formatClock(t) {
   return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
+// The stored last run keeps its score curve so the next card can
+// draw it as the quiet sub-line under the new run's own line. Stored
+// samples are decimated to at most this many points: the shape of
+// the run survives, the storage record stays small.
+const PREV_SAMPLES_MAX = 240;
+function decimateSamples(samples, maxPoints = PREV_SAMPLES_MAX) {
+  if (!Array.isArray(samples)) return [];
+  if (samples.length <= maxPoints) return samples.slice();
+  const step = Math.ceil(samples.length / maxPoints);
+  const out = [];
+  for (let i = 0; i < samples.length; i += step) out.push(samples[i]);
+  const last = samples[samples.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+
 function createRunRecorder() {
   const events = []; // { t, kind, text, tone, score } — tone: plain|good|bad|gold
   let samples = []; // { t, score } — the run's score, sampled for the chart
@@ -1107,6 +1468,8 @@ function createRunRecorder() {
   let lastSampleT = -Infinity;
   let preset = '';
   let stake = DEFAULT_STAKE;
+  let target = DEFAULT_TARGET;
+  let currency = 'usd';
   let orbs = 0;
   let closeCalls = 0;
   let rugsSurvived = 0;
@@ -1137,11 +1500,14 @@ function createRunRecorder() {
     get samples() { return samples; },
 
     // The run starts: the ape-in entry, stamped at t=0, and the first
-    // chart sample at the origin. The stake the player picked rides
-    // along so the finished summary can settle the bag.
-    begin(presetLabel, stakeAmount) {
+    // chart sample at the origin. The stake, the called bar and the
+    // currency they are denominated in ride along so the finished
+    // summary can settle the bag against them.
+    begin(presetLabel, stakeAmount, targetPct, stakeCurrency) {
       preset = presetLabel;
-      stake = sanitizeStake(stakeAmount);
+      currency = sanitizeCurrency(stakeCurrency);
+      stake = currency === 'near' ? sanitizeNearStake(stakeAmount) : sanitizeStake(stakeAmount);
+      target = sanitizeTarget(targetPct);
       push(0, 'start', `aped in · ${presetLabel}. one button, no mercy.`, 'plain', 0);
       sample(0, 0);
     },
@@ -1210,6 +1576,8 @@ function createRunRecorder() {
       return {
         preset,
         stake,
+        target,
+        currency,
         score: state.score,
         peakScore,
         orbs,
@@ -1225,29 +1593,10 @@ function createRunRecorder() {
   };
 }
 
-// Grades a finished run. Green ("closed green") when the run set a new
-// best or beat the previous run's score; red when it did neither;
-// 'flat' for the very first run on the books (nothing to grade
-// against — a first run that also sets the best arrives as green via
-// isNewBest before it ever gets here).
-function verdictFor(summary, prev, isNewBest) {
-  const deltaVsPrev = prev ? summary.score - prev.score : null;
-  if (isNewBest) {
-    return { tone: 'green', label: 'CLOSED GREEN · NEW BEST', deltaVsPrev };
-  }
-  if (prev && deltaVsPrev > 0) {
-    return { tone: 'green', label: `CLOSED GREEN · +${deltaVsPrev} vs last run`, deltaVsPrev };
-  }
-  if (!prev) {
-    return { tone: 'flat', label: 'FIRST TRADE ON THE BOOKS', deltaVsPrev: null };
-  }
-  return { tone: 'red', label: `CLOSED RED · ${deltaVsPrev} vs last run`, deltaVsPrev };
-}
-
 // Signed percent of `score` against the previous run's score, or null
 // when there is nothing meaningful to divide by (no previous run, or a
-// previous run that scored zero — the card then falls back to the
-// absolute delta, which verdictFor already carries).
+// previous run that scored zero — the vs-last-run note then falls
+// back to the absolute points delta).
 function gainPctFor(score, prev) {
   if (!prev || !(prev.score > 0)) return null;
   return ((score - prev.score) / prev.score) * 100;
@@ -1257,27 +1606,49 @@ function fmtGainPct(pct) {
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`;
 }
 
+// The quiet line under the money strip: how this run compares to the
+// previous one. Demoted, not deleted — the bar verdict owns the card
+// now, this is just the footnote. Losses carry a real minus sign.
+function vsPrevNote(summary, prev, isNewBest) {
+  let base;
+  if (!prev) {
+    base = 'first trade';
+  } else {
+    const pct = gainPctFor(summary.score, prev);
+    if (pct !== null) {
+      base = `${fmtGainPct(pct).replace('-', '−')} vs last run`;
+    } else {
+      const d = summary.score - prev.score;
+      base = `${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(d)} pts vs last run`;
+    }
+  }
+  return isNewBest ? `${base} · new best` : base;
+}
+
 function fmtMultiplier(m) {
   return `x${Number.isInteger(m) ? m.toFixed(0) : m}`;
 }
 
 // The share text, in the player's voice: all lowercase, no dash
-// punctuation. It opens with the stake settlement (the bag the run
-// turned), then the close, then the stats; the closing line follows
-// the verdict.
-function shareTextFor(summary, verdict, isNewBest) {
+// punctuation. It opens with the call and the settlement — the bar
+// the player picked, the multiple they actually hit, and what the
+// bag did — then the close, then the stats.
+function shareTextFor(summary, settle, isNewBest) {
   const closer = isNewBest
     ? 'new best. wagmi.'
-    : verdict.tone === 'green'
+    : settle.win
       ? 'the pump was near.'
-      : verdict.tone === 'red'
-        ? 'the line won this one. running it back.'
-        : 'first trade on the books.';
+      : 'the line won this one. running it back.';
   const orbBit = summary.orbs === 1 ? '1 orb clipped' : `${summary.orbs} orbs clipped`;
-  const stake = sanitizeStake(summary.stake);
-  const money = moneyFor(summary.score, stake);
+  const currency = sanitizeCurrency(summary.currency);
+  const stake = currency === 'near' ? sanitizeNearStake(summary.stake) : sanitizeStake(summary.stake);
+  const head = settle.win
+    ? `called ${fmtBagMultiple(settle.barMult)} on pump rider, hit ${fmtBagMultiple(settle.multiple)}. ` +
+      `turned ${fmtUnitLower(stake, currency)} into ${fmtUnitLower(settle.payout, currency)}. `
+    : `called ${fmtBagMultiple(settle.barMult)} on pump rider, hit ${fmtBagMultiple(settle.multiple)}. ` +
+      `lost the ${fmtUnitLower(stake, currency)} bag. `;
   return (
-    `turned ${fmtMoney(stake)} into ${fmtMoney(money.payout)} on pump rider, ${fmtBagMultiple(money.multiple)}. ` +
+    head +
     `closed +${summary.score} pts. ` +
     `${summary.duration.toFixed(1)}s in trade, ${orbBit}, ` +
     `best combo ${fmtMultiplier(summary.bestMultiplier)}. ${closer}`
@@ -1287,22 +1658,42 @@ function shareTextFor(summary, verdict, isNewBest) {
 // Everything the PnL card renders, derived from one finished run.
 // Pure: the DOM card and the PNG painter both draw from this model, so
 // the downloaded card can never disagree with the screen.
+//
+// The card's identity is the money truth: the run graded against the
+// bar it called. Win and the card glows green with green majors; miss
+// the bar and it glows red — even if the run outscored the previous
+// one, because a missed bar means the bag is gone. The comparison to
+// the previous run survives only as the quiet note under the strip.
 function buildCardData(summary, prev, isNewBest) {
-  const verdict = verdictFor(summary, prev, isNewBest);
-  const gainPct = gainPctFor(summary.score, prev);
-  const gainText = !prev
-    ? 'FIRST TRADE'
-    : gainPct !== null
-      ? fmtGainPct(gainPct)
-      : `${verdict.deltaVsPrev >= 0 ? '+' : ''}${verdict.deltaVsPrev} pts vs last`;
-  // The stake settlement: independent of the verdict (which grades
-  // against the previous run), this grades the run against the bag
-  // that rode on it. A summary with no stake recorded — a run from
-  // before the stake card existed — settles at the default stake.
-  const stake = sanitizeStake(summary.stake);
-  const money = moneyFor(summary.score, stake);
-  const moneyTone = money.pnl > 0 ? 'green' : money.pnl < 0 ? 'red' : 'flat';
-  const moneyText = `IN ${fmtMoney(stake)} → OUT ${fmtMoney(money.payout)} · ${fmtSignedMoney(money.pnl)}`;
+  // A summary with no stake or bar recorded — a run from before the
+  // bar existed — settles at the default stake and the default bar.
+  // The currency defaults to dollars for the same reason.
+  const currency = sanitizeCurrency(summary.currency);
+  const stake = currency === 'near' ? sanitizeNearStake(summary.stake) : sanitizeStake(summary.stake);
+  const target = sanitizeTarget(summary.target);
+  const settle = settleRun(summary.score, stake, target);
+  const win = settle.win;
+  const verdictLabel = win
+    ? `BAR CLEARED · ${fmtBagMultiple(settle.multiple)} vs ${fmtBagMultiple(settle.barMult)} bar`
+    : `MISSED THE BAR · ${fmtBagMultiple(settle.multiple)} of ${fmtBagMultiple(settle.barMult)}`;
+  const gainText = win ? fmtGainPct(settle.gainPct) : '−100%';
+  const moneyTone = settle.pnl > 0 ? 'green' : settle.pnl < 0 ? 'red' : 'flat';
+  // The strip speaks the active unit. In NEAR it also carries the
+  // dollar equivalent of the pnl alone — appended only when the whole
+  // line still fits the strip in both renderers.
+  let moneyText;
+  if (currency === 'near') {
+    const base =
+      `IN ${fmtAmount(stake, currency)} → OUT ${fmtAmount(settle.payout, currency)} · ${fmtSignedAmount(settle.pnl, currency)}`;
+    moneyText = base;
+    if (settle.pnl !== 0) {
+      const eq = Math.sign(settle.pnl) * Math.round(Math.abs(settle.pnl * NEAR_RATE));
+      const withEq = `${base} · ≈ ${fmtSignedMoney(eq)}`;
+      if (withEq.length <= 58) moneyText = withEq;
+    }
+  } else {
+    moneyText = `IN ${fmtMoney(stake)} → OUT ${fmtMoney(settle.payout)} · ${fmtSignedMoney(settle.pnl)}`;
+  }
   const footer = FOOTER_PUNS[
     Math.abs(summary.score * 7 + summary.orbs * 13 + Math.floor(summary.duration)) % FOOTER_PUNS.length
   ];
@@ -1310,20 +1701,28 @@ function buildCardData(summary, prev, isNewBest) {
     preset: String(summary.preset || '').toUpperCase(),
     score: summary.score,
     heroText: `+${summary.score}`,
-    tone: verdict.tone,
-    verdictLabel: verdict.label,
+    win,
+    outcome: win ? 'win' : 'loss',
+    tone: win ? 'green' : 'red',
+    verdictLabel,
     isNewBest,
     timeInTrade: summary.duration,
     timeText: `${summary.duration.toFixed(1)}s`,
-    gainPct,
+    gainPct: settle.gainPct,
     gainText,
+    vsPrevText: vsPrevNote(summary, prev, isNewBest),
     bestMultiplier: summary.bestMultiplier,
     multText: fmtMultiplier(summary.bestMultiplier),
+    currency,
     stake,
-    multiple: money.multiple,
-    bagMultText: fmtBagMultiple(money.multiple),
-    payout: money.payout,
-    pnl: money.pnl,
+    target,
+    barMult: settle.barMult,
+    barMultText: fmtBagMultiple(settle.barMult),
+    needed: settle.needed,
+    multiple: settle.multiple,
+    bagMultText: fmtBagMultiple(settle.multiple),
+    payout: settle.payout,
+    pnl: settle.pnl,
     moneyTone,
     moneyText,
     tiles: [
@@ -1334,28 +1733,45 @@ function buildCardData(summary, prev, isNewBest) {
     ],
     peakScore: summary.peakScore,
     footer,
-    shareText: shareTextFor(summary, verdict, isNewBest),
+    shareText: shareTextFor(summary, settle, isNewBest),
   };
 }
 
-// The chart, normalized to the unit square (x: 0..1 across the run's
-// duration, y: 0..1 up to the run's peak score) so any renderer — the
-// SVG on the card, the PNG painter — maps it onto its own box. Score
-// only ever climbs in this game, so the line always ends at the peak:
-// the crash point IS the high, exactly like the reference cards.
-function chartModel(summary) {
-  const dur = Math.max(summary.duration, 1e-6);
-  const peak = Math.max(summary.peakScore, 1);
+// The chart, normalized to the unit square so any renderer — the SVG
+// on the card, the PNG painter — maps it onto its own box. TWO runs
+// share the frame on ONE common scale: the current run (the major
+// line) and the previous run (the quiet sub-line), so neither curve
+// is ever stretched to fill the box on its own. Both normalize
+// against the greater peak and the longer duration of the two, and
+// the scale also makes room for the called bar (needed pts), so the
+// dashed target line always sits inside the frame and a miss visibly
+// dies below it. Score only ever climbs in this game, so each line
+// ends at its own peak: a run's crash point IS its high.
+function chartModel(summary, prev = null) {
+  const needed = targetPoints(summary.target);
+  const prevSamples = prev && Array.isArray(prev.samples) && prev.samples.length >= 2
+    ? prev.samples
+    : null;
+  const prevPeak = prevSamples
+    ? Math.max(prev.peakScore || 0, prevSamples[prevSamples.length - 1].score)
+    : 0;
+  const peak = Math.max(summary.peakScore, prevPeak, needed, 1);
+  const dur = Math.max(summary.duration, prevSamples ? (prev.duration || 0) : 0, 1e-6);
   const nx = (t) => Math.min(1, Math.max(0, t / dur));
   const ny = (s) => Math.min(1, Math.max(0, s / peak));
   const at = (t, s) => ({ x: nx(t), y: ny(s) });
   return {
     line: summary.samples.map((s) => at(s.t, s.score)),
+    prevLine: prevSamples ? prevSamples.map((s) => at(s.t, s.score)) : [],
+    hasPrev: !!prevSamples,
     orbs: summary.events.filter((e) => e.kind === 'orb').map((e) => at(e.t, e.score)),
     rugs: summary.events.filter((e) => e.kind === 'rugsurvived').map((e) => at(e.t, e.score)),
     crash: at(summary.duration, summary.score),
     peakScore: summary.peakScore,
     duration: summary.duration,
+    peakY: ny(summary.peakScore),
+    targetY: ny(needed),
+    needed,
   };
 }
 
@@ -1374,6 +1790,13 @@ function chartModel(summary) {
 
 
 
+// Build variant, stamped by build-single.mjs (the token below is
+// replaced at bundle time). The default stamp keeps the NEAR
+// affiliation layer; the 'product' stamp ships the identical game
+// without it. The modular dev build keeps the token, which reads as
+// the default flavour.
+const VARIANT = 'hackathon';
+
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 
@@ -1387,6 +1810,8 @@ const THEMES = {
     speckle: 'rgba(255,255,255,0.55)',
     chart: '#00ffa3',
     chartHi: '#8dffd9',
+    prevLine: 'rgba(255,120,120,0.45)',
+    barLine: '#9aa7d9',
     fillTop: 'rgba(0,255,163,0.30)',
     fillBot: 'rgba(0,255,163,0.02)',
     glow: 'rgba(0,255,163,0.55)',
@@ -1409,6 +1834,8 @@ const THEMES = {
     speckle: 'rgba(146,110,40,0.35)',
     chart: '#009e60',
     chartHi: '#00c978',
+    prevLine: 'rgba(190,60,60,0.42)',
+    barLine: '#5d6a8c',
     fillTop: 'rgba(0,158,96,0.26)',
     fillBot: 'rgba(0,158,96,0.03)',
     glow: 'rgba(0,158,96,0.35)',
@@ -1435,6 +1862,9 @@ function store(key, value) {
     localStorage.setItem(key, value);
   } catch { return null; }
 }
+function storeRemove(key) {
+  try { localStorage.removeItem(key); } catch { /* nothing persisted anyway */ }
+}
 
 function resolveTheme() {
   const q = params.get('theme');
@@ -1449,7 +1879,10 @@ function resolveTheme() {
 let themeName = resolveTheme();
 function applyTheme() {
   document.documentElement.dataset.theme = themeName;
-  $('btn-theme').textContent = `Theme: ${themeName}`;
+  // The icon names the destination: a moon in light mode (tap for
+  // dark), a sun in dark mode (tap for light).
+  $('btn-theme').textContent = themeName === 'dark' ? '☀️' : '🌙';
+  $('btn-theme').setAttribute('aria-label', themeName === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
 }
 function toggleTheme() {
   themeName = themeName === 'dark' ? 'light' : 'dark';
@@ -1505,8 +1938,22 @@ function presetLabel() {
     ? 'Custom'
     : settings.preset[0].toUpperCase() + settings.preset.slice(1);
 }
+// The volatility readout: difficulty is market volatility, and the
+// payout factor it implies (engine.js) is shown wherever the choice
+// is made — both difficulty panels and the stake card — updating
+// live as the sliders move, before any run starts.
+function volatilityText() {
+  const f = payoutFactorFor(engineSettings());
+  const label = f < 0.9 ? 'LOW' : f > 1.05 ? 'HIGH' : 'MEDIUM';
+  return `VOLATILITY ${label} · PAYOUT x${f.toFixed(2)}`;
+}
+function syncVolUI() {
+  const text = volatilityText();
+  document.querySelectorAll('.vol-line').forEach((el) => { el.textContent = text; });
+}
 function syncSettingsUI() {
   const label = presetLabel();
+  syncVolUI();
   document.querySelectorAll('.settings-panel').forEach((panel) => {
     panel.querySelector('.preset-name').textContent = label;
     panel.querySelectorAll('.chip').forEach((chip) => {
@@ -1541,34 +1988,113 @@ function wireSettings() {
 }
 
 // ---------------------------------------------------------------- stake
-// The pre-game stake: a fixed ladder of dollar amounts, picked on the
-// stake card between the start card and the run. The choice persists
-// across sessions; the run's PnL card settles it (every 100 pts is 1x
-// on the bag — the money math lives in recap.js with the card model).
+// The pre-game stake, picked on the stake card between the start card
+// and the run, in dollars or in NEAR (the toggle on the card switches
+// units; the choice and the amount persist across sessions). The run
+// settles in the active unit — every 100 pts is 1x on the bag, and
+// the money math lives in recap.js with the card model. Dollars ride
+// a fixed ladder (chips + stepper walk it); NEAR has its own native
+// ladder and a finer stepper (0.5 under 10, then 5s). Switching units
+// converts the amount at the fixed reference rate in recap.js.
+let currency = sanitizeCurrency(store(CURRENCY_KEY));
 let stakeIndex = stakeIndexOf(Number(store(STAKE_KEY)));
-function currentStake() { return STAKE_LADDER[stakeIndex]; }
+let nearStake = sanitizeNearStake(Number(store(STAKE_KEY)));
+function currentStake() { return currency === 'near' ? nearStake : STAKE_LADDER[stakeIndex]; }
+function persistStake() { store(STAKE_KEY, String(currentStake())); }
 function setStakeIndex(i) {
+  if (currency !== 'usd') return;
   stakeIndex = Math.min(STAKE_LADDER.length - 1, Math.max(0, i));
-  store(STAKE_KEY, String(currentStake()));
+  persistStake();
   syncStakeUI();
+}
+function setNearStake(v) {
+  if (currency !== 'near') return;
+  nearStake = sanitizeNearStake(v);
+  persistStake();
+  syncStakeUI();
+}
+function setCurrency(next) {
+  next = sanitizeCurrency(next);
+  if (next === currency) return;
+  const value = currentStake();
+  currency = next;
+  store(CURRENCY_KEY, currency);
+  if (currency === 'near') nearStake = usdToNear(value);
+  else stakeIndex = stakeIndexOf(nearToUsd(value));
+  persistStake();
+  buildStakeChips();
+  syncStakeUI();
+}
+function buildStakeChips() {
+  const ladder = currency === 'near' ? NEAR_LADDER : STAKE_LADDER;
+  const box = $('stake-chips');
+  box.textContent = '';
+  for (const v of ladder) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'stake-chip';
+    b.dataset.stake = String(v);
+    b.textContent = fmtAmount(v, currency);
+    b.addEventListener('click', () => {
+      if (currency === 'near') setNearStake(v);
+      else setStakeIndex(stakeIndexOf(v));
+    });
+    box.append(b);
+  }
 }
 function syncStakeUI() {
   const stake = currentStake();
-  $('stake-amount').textContent = fmtMoney(stake);
+  document.querySelector('.stake-card').classList.toggle('near-mode', currency === 'near');
+  $('stake-amount').textContent = fmtAmount(stake, currency);
   document.querySelectorAll('.stake-chip').forEach((chip) => {
     chip.classList.toggle('active', Number(chip.dataset.stake) === stake);
   });
-  $('btn-stake-minus').disabled = stakeIndex === 0;
-  $('btn-stake-plus').disabled = stakeIndex === STAKE_LADDER.length - 1;
-  $('btn-ape').textContent = `APE IN ${fmtMoney(stake)}`;
+  $('btn-stake-minus').disabled = currency === 'near' ? stake <= 0.5 : stakeIndex === 0;
+  $('btn-stake-plus').disabled = currency === 'near' ? stake >= 1000 : stakeIndex === STAKE_LADDER.length - 1;
+  $('btn-ape').textContent = `APE IN ${fmtAmount(stake, currency)}`;
+  $('cur-usd').classList.toggle('active', currency === 'usd');
+  $('cur-near').classList.toggle('active', currency === 'near');
+  $('cur-rate').classList.toggle('hidden', currency !== 'near');
 }
 function wireStake() {
-  document.querySelectorAll('.stake-chip').forEach((chip) => {
-    chip.addEventListener('click', () => setStakeIndex(stakeIndexOf(Number(chip.dataset.stake))));
+  buildStakeChips();
+  $('btn-stake-minus').addEventListener('click', () => {
+    if (currency === 'near') setNearStake(stepNearStake(nearStake, -1));
+    else setStakeIndex(stepStakeIndex(stakeIndex, -1));
   });
-  $('btn-stake-minus').addEventListener('click', () => setStakeIndex(stepStakeIndex(stakeIndex, -1)));
-  $('btn-stake-plus').addEventListener('click', () => setStakeIndex(stepStakeIndex(stakeIndex, 1)));
+  $('btn-stake-plus').addEventListener('click', () => {
+    if (currency === 'near') setNearStake(stepNearStake(nearStake, 1));
+    else setStakeIndex(stepStakeIndex(stakeIndex, 1));
+  });
+  $('cur-usd').addEventListener('click', () => setCurrency('usd'));
+  $('cur-near').addEventListener('click', () => setCurrency('near'));
   syncStakeUI();
+}
+
+// ---------------------------------------------------------------- the bar
+// The called target: a gain over the stake the player promises
+// themselves on the same stake card. Clear it and the bag pays out;
+// miss it and the bag is gone (the settlement lives in recap.js).
+// The choice persists across sessions like the stake does.
+let targetIndex = targetIndexOf(Number(store(TARGET_KEY)));
+function currentTarget() { return TARGET_LADDER[targetIndex]; }
+function setTargetIndex(i) {
+  targetIndex = Math.min(TARGET_LADDER.length - 1, Math.max(0, i));
+  store(TARGET_KEY, String(currentTarget()));
+  syncTargetUI();
+}
+function syncTargetUI() {
+  const target = currentTarget();
+  document.querySelectorAll('.target-chip').forEach((chip) => {
+    chip.classList.toggle('active', Number(chip.dataset.target) === target);
+  });
+  $('target-need').textContent = `you need ${targetPoints(target)} pts to clear the bar`;
+}
+function wireTarget() {
+  document.querySelectorAll('.target-chip').forEach((chip) => {
+    chip.addEventListener('click', () => setTargetIndex(targetIndexOf(Number(chip.dataset.target))));
+  });
+  syncTargetUI();
 }
 
 // ---------------------------------------------------------------- audio
@@ -1582,6 +2108,7 @@ function ensureAudio() {
     try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { actx = null; }
   }
   if (actx && actx.state === 'suspended') actx.resume();
+  if (actx) startMusic(); // the soundtrack starts with the unlock, in the menu already
 }
 
 // The unlock must ride the FIRST gesture anywhere — a button tap, a key
@@ -1631,6 +2158,110 @@ const sfx = {
   crash() { noiseBurst(); tone(130, 0.4, { vol: 0.22, slideTo: 38 }); },
 };
 
+// ---------------------------------------------------------------- music
+// A procedural soundtrack under the SFX: one seamless synthwave
+// loop in A minor — a driving bass line, a bright arp, kick and
+// hats — composed entirely of WebAudio voices. No samples, nothing
+// fetched, nothing copyrighted: the single file stays fully
+// offline. A lookahead scheduler (25ms timer, notes placed 120ms
+// ahead) keeps the loop tight for a handful of nodes per step.
+// The music rides its own gain node at a modest level so the SFX
+// stay on top; the mute silences the gain node itself, and while
+// the game is paused the scheduler holds the loop's place instead
+// of advancing it, so it resumes exactly where it stopped.
+const MUSIC_VOL = 0.2;
+const MUSIC_BPM = 112;
+// Four bars of sixteenths: Am — F — C — G, the night-ride walk.
+const MUSIC_CHORDS = [
+  { bass: 55.0, arp: [440.0, 523.25, 659.25, 880.0] }, // A1 · A4 C5 E5 A5
+  { bass: 43.65, arp: [349.23, 440.0, 523.25, 698.46] }, // F1 · F4 A4 C5 F5
+  { bass: 65.41, arp: [261.63, 329.63, 392.0, 523.25] }, // C2 · C4 E4 G4 C5
+  { bass: 49.0, arp: [392.0, 493.88, 587.33, 783.99] }, // G1 · G4 B4 D5 G5
+];
+const MUSIC_ARP_WALK = [0, 1, 2, 3, 3, 2, 1, 0];
+const MUSIC_BASS_WALK = [1, 1, 2, 1, 1, 1, 2, 1];
+let musicGain = null;
+let musicTimer = null;
+let musicStep = 0;
+let musicNextTime = 0;
+let musicNoiseBuf = null;
+
+function musicToneAt(freq, t0, dur, { type = 'triangle', vol = 0.4 } = {}) {
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(vol, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  o.connect(g); g.connect(musicGain);
+  o.start(t0); o.stop(t0 + dur + 0.03);
+}
+function musicKickAt(t0) {
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(128, t0);
+  o.frequency.exponentialRampToValueAtTime(41, t0 + 0.11);
+  g.gain.setValueAtTime(0.85, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.13);
+  o.connect(g); g.connect(musicGain);
+  o.start(t0); o.stop(t0 + 0.16);
+}
+function musicHatAt(t0, vol) {
+  if (!musicNoiseBuf) {
+    const n = Math.floor(actx.sampleRate * 0.5);
+    musicNoiseBuf = actx.createBuffer(1, n, actx.sampleRate);
+    const d = musicNoiseBuf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const src = actx.createBufferSource(); src.buffer = musicNoiseBuf;
+  src.playbackRate.value = 0.9 + Math.random() * 0.2;
+  const f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6800;
+  const g = actx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.045);
+  src.connect(f); f.connect(g); g.connect(musicGain);
+  src.start(t0, Math.random() * 0.3, 0.06); src.stop(t0 + 0.06);
+}
+function scheduleMusicStep(step, t0, stepDur) {
+  const chord = MUSIC_CHORDS[Math.floor(step / 16) % 4];
+  const s16 = step % 16;
+  if (s16 % 2 === 0) { // the driving bass, eighths with octave pops
+    const mult = MUSIC_BASS_WALK[s16 / 2];
+    musicToneAt(chord.bass * mult, t0, stepDur * 1.9, { type: 'triangle', vol: 0.75 });
+  }
+  const arpIdx = MUSIC_ARP_WALK[s16 % 8];
+  musicToneAt(chord.arp[arpIdx], t0, stepDur * 0.92, { type: 'square', vol: 0.11 });
+  if (s16 % 4 === 0) musicKickAt(t0);
+  if (s16 % 4 === 2) musicHatAt(t0, 0.2);
+  else if (s16 % 2 === 1) musicHatAt(t0, 0.06);
+}
+function musicTick() {
+  if (!actx || !musicGain) return;
+  if (paused) { // hold the loop's place; it resumes with the game
+    musicNextTime = Math.max(musicNextTime, actx.currentTime + 0.05);
+    return;
+  }
+  const stepDur = 60 / MUSIC_BPM / 4;
+  while (musicNextTime < actx.currentTime + 0.12) {
+    scheduleMusicStep(musicStep, musicNextTime, stepDur);
+    musicStep = (musicStep + 1) % 64;
+    musicNextTime += stepDur;
+  }
+}
+function startMusic() {
+  if (!actx || musicTimer) return;
+  if (!musicGain) {
+    musicGain = actx.createGain();
+    musicGain.gain.value = muted ? 0 : MUSIC_VOL;
+    musicGain.connect(actx.destination);
+  }
+  musicStep = 0;
+  musicNextTime = actx.currentTime + 0.06;
+  musicTimer = setInterval(musicTick, 25);
+}
+
 // ---------------------------------------------------------------- state
 const canvas = $('game');
 const ctx = canvas.getContext('2d');
@@ -1656,6 +2287,7 @@ let lastHud = {};
 let recorder = null; // PnL recorder for the live run (recap.js)
 let lastSummary = null; // the most recent finished run's summary
 let lastCard = null; // the most recent finished run's PnL card model
+let lastPrev = null; // the run before it (its summary, samples included)
 
 function newRun(seed) {
   G = createGame(seed, { settings: engineSettings() });
@@ -1680,7 +2312,7 @@ function startGame() {
   ignoredKeys = new Set(heldKeys);
   newRun(seedParam !== null ? seedParam : (Math.random() * 1e9) | 0);
   recorder = createRunRecorder();
-  recorder.begin(presetLabel(), currentStake());
+  recorder.begin(presetLabel(), currentStake(), currentTarget(), currency);
   mode = 'playing';
   $('overlay-start').classList.add('hidden');
   $('overlay-over').classList.add('hidden');
@@ -1698,19 +2330,25 @@ function gameOver() {
   $('over-title').textContent = isBest
     ? 'new best. wagmi.'
     : OVER_LINES[(Math.random() * OVER_LINES.length) | 0];
-  // PnL card: close the run's books, grade it against the previous
-  // run, remember it for next time, and render the card.
+  // PnL card: close the run's books, settle it against the called
+  // bar, remember it (score curve included, decimated) so the next
+  // card can draw it as the sub-line, and render the card.
   if (recorder) {
     lastSummary = recorder.finish(G);
     const prev = loadLastRun();
+    lastPrev = prev;
     lastCard = buildCardData(lastSummary, prev, isBest);
     store(LAST_RUN_KEY, JSON.stringify({
       score: lastSummary.score,
+      peakScore: lastSummary.peakScore,
       orbs: lastSummary.orbs,
       bestCombo: lastSummary.bestCombo,
       duration: lastSummary.duration,
+      stake: lastSummary.stake,
+      target: lastSummary.target,
+      samples: decimateSamples(lastSummary.samples),
     }));
-    renderPnlCard(lastCard, lastSummary);
+    renderPnlCard(lastCard, lastSummary, prev);
   }
   setOverSettings(false); // difficulty starts collapsed on this card
   setTimeout(() => {
@@ -1735,29 +2373,59 @@ function svgEl(tag, attrs) {
   return el;
 }
 
-// The run's own chart, drawn into the card's SVG: the score climbing
-// over time (from chartModel's unit-square points), a dashed line at
-// the peak, gold squares where orbs were clipped, a pink flag where a
-// rug was survived, and a red X where it ended.
-function renderPnlChart(svg, summary, tone) {
+// The card's chart, drawn into its SVG from chartModel's unit-square
+// points. TWO runs share one common scale: the previous run as a thin
+// muted sub-line, this run as the thick major line in the card's
+// identity colour (win green, loss red — the money truth, not the
+// vs-last-run grade). A neutral dashed line marks the called bar, a
+// dashed line in the line's own colour marks this run's peak, gold
+// squares sit where orbs were clipped, a pink flag where a rug was
+// survived, and a red X where it ended.
+function renderPnlChart(svg, m, card) {
   const T = THEMES[themeName];
-  // The verdict rides on the line itself: NEAR green up, red down.
-  const line = tone === 'green' ? '#00ec97' : tone === 'red' ? T.cliff : T.chart;
-  const m = chartModel(summary);
+  const line = card.win ? '#00ec97' : T.cliff;
   const W = 320; const H = 110;
   const X0 = 7; const X1 = W - 7; const YT = 11; const YB = H - 6;
   const px = (u) => X0 + u * (X1 - X0);
   const py = (u) => YB - u * (YB - YT);
   svg.textContent = '';
   if (m.line.length < 2) return;
+  // The bar the player called: a neutral dashed line the run had to
+  // cross, labelled at the left so a miss visibly dies below it.
+  svg.append(svgEl('line', {
+    x1: X0, y1: py(m.targetY), x2: X1, y2: py(m.targetY),
+    stroke: T.barLine, 'stroke-width': 1, 'stroke-dasharray': '2 3',
+    opacity: 0.8, 'vector-effect': 'non-scaling-stroke', class: 'target-line',
+  }));
+  const barLabel = svgEl('text', {
+    x: X0 + 2, y: Math.max(8, py(m.targetY) - 2.5), fill: T.barLine,
+    'font-size': 7.5, 'font-weight': 800, 'letter-spacing': '0.05em',
+  });
+  barLabel.textContent = `BAR ${m.needed}`;
+  svg.append(barLabel);
+  // The previous run, quiet underneath: thin, muted, unfilled.
+  if (m.hasPrev && m.prevLine.length >= 2) {
+    const prevPts = m.prevLine.map((p) => `${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`);
+    svg.append(svgEl('path', {
+      d: `M${prevPts.join(' L')}`, fill: 'none', stroke: T.prevLine,
+      'stroke-width': 1.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round',
+      'vector-effect': 'non-scaling-stroke', class: 'prev-line',
+    }));
+    const lastPrev = m.prevLine[m.prevLine.length - 1];
+    const prevLabel = svgEl('text', {
+      x: Math.max(X0 + 14, px(lastPrev.x) - 2), y: Math.min(YB - 2, py(lastPrev.y) + 8),
+      fill: T.prevLine, 'font-size': 7, 'font-weight': 700, 'text-anchor': 'end',
+    });
+    prevLabel.textContent = 'last run';
+    svg.append(prevLabel);
+  }
   const pts = m.line.map((p) => `${px(p.x).toFixed(1)},${py(p.y).toFixed(1)}`);
-  // Dashed peak line, from the start to just short of the crash
-  // (score is monotonic, so the peak is the crash point, at the
-  // top-right): it stops before the X so the HIGH chip and the
-  // marker never fight over the corner.
+  // Dashed peak line at THIS run's high on the common scale, stopping
+  // short of the crash X so the HIGH chip and the marker never fight
+  // over the corner.
   if (m.peakScore > 0) {
     svg.append(svgEl('line', {
-      x1: X0, y1: py(1), x2: px(m.crash.x) - 12, y2: py(1),
+      x1: X0, y1: py(m.peakY), x2: px(m.crash.x) - 12, y2: py(m.peakY),
       stroke: line, 'stroke-width': 1, 'stroke-dasharray': '4 4',
       opacity: 0.55, 'vector-effect': 'non-scaling-stroke',
     }));
@@ -1790,10 +2458,13 @@ function renderPnlChart(svg, summary, tone) {
   }));
 }
 
-function renderPnlCard(card, summary) {
+function renderPnlCard(card, summary, prev) {
   $('pnl-preset').textContent = card.preset || 'CUSTOM';
-  // The hero score is always gold; the verdict is carried by the
-  // pill, the gain figure and the chart line, not the score.
+  // The card's identity is the bar settlement: win and it glows
+  // green with a gold hero, miss and it glows red with a red hero.
+  const pnlEl = $('pnl-card');
+  pnlEl.classList.toggle('win', card.win);
+  pnlEl.classList.toggle('loss', !card.win);
   $('pnl-score').textContent = card.heroText;
   const verdict = $('pnl-verdict');
   verdict.textContent = card.verdictLabel;
@@ -1806,12 +2477,13 @@ function renderPnlCard(card, summary) {
   const money = $('pnl-money');
   money.textContent = card.moneyText;
   money.className = `pnl-money ${card.moneyTone}`;
+  $('pnl-vs').textContent = card.vsPrevText;
   $('pnl-peak').textContent = `HIGH ${card.peakScore}`;
   for (const tile of card.tiles) {
     $(`pnl-tile-${tile.key}`).textContent = tile.value;
   }
   $('pnl-foot').textContent = card.footer;
-  renderPnlChart($('pnl-chart'), summary, card.tone);
+  renderPnlChart($('pnl-chart'), chartModel(summary, prev), card);
 }
 
 // ---------------------------------------------------------------- PNG painter
@@ -1819,8 +2491,8 @@ function renderPnlCard(card, summary) {
 // card, painted onto a 1080x1080 canvas from the same card model, so
 // the file a player shares can never disagree with what they saw.
 const PNL_PAINT = {
-  dark: { bg: '#000000', panel: '#0d0d0d', ink: '#eef2ff', dim: '#9aa7d9', line: '#232323', green: '#00ffa3', red: '#ff5252', gold: '#ffd23d', pink: '#ff3d8a', chart: '#00ffa3', score: '#ffc837', best: '#00ec97' },
-  light: { bg: '#fffdf6', panel: '#fdf3dd', ink: '#16213c', dim: '#5d6a8c', line: '#e3d3ae', green: '#009e60', red: '#d92b2b', gold: '#d97706', pink: '#e02473', chart: '#009e60', score: '#b97e04', best: '#00875a' },
+  dark: { bg: '#000000', panel: '#0d0d0d', ink: '#eef2ff', dim: '#9aa7d9', line: '#232323', green: '#00ffa3', red: '#ff5252', gold: '#ffd23d', pink: '#ff3d8a', chart: '#00ffa3', score: '#ffc837', best: '#00ec97', prevLine: 'rgba(200,110,110,0.5)', barLine: '#9aa7d9' },
+  light: { bg: '#fffdf6', panel: '#fdf3dd', ink: '#16213c', dim: '#5d6a8c', line: '#e3d3ae', green: '#009e60', red: '#d92b2b', gold: '#d97706', pink: '#e02473', chart: '#009e60', score: '#b97e04', best: '#00875a', prevLine: 'rgba(160,70,70,0.5)', barLine: '#5d6a8c' },
 };
 
 function rr(c, x, y, w, h, r) {
@@ -1843,8 +2515,17 @@ function renderPnlPng() {
   const c = cv.getContext('2d');
   c.fillStyle = P.bg;
   c.fillRect(0, 0, 1080, 1080);
+  // The card identity, same as the screen: a coloured border band
+  // with a soft halo, green on a cleared bar, red on a missed one.
+  const glowColor = card.win ? P.best : P.red;
+  c.save();
+  c.shadowColor = glowColor; c.shadowBlur = 46;
   rr(c, 28, 28, 1024, 1024, 36);
-  c.strokeStyle = P.line; c.lineWidth = 3; c.stroke();
+  c.strokeStyle = glowColor; c.lineWidth = 4; c.stroke();
+  c.restore();
+  rr(c, 17, 17, 1046, 1046, 42);
+  c.strokeStyle = glowColor; c.globalAlpha = 0.3; c.lineWidth = 2; c.stroke();
+  c.globalAlpha = 1;
 
   // Header: a little rocket + the wordmark, preset on the right.
   c.save();
@@ -1861,62 +2542,87 @@ function renderPnlPng() {
   c.font = '900 46px system-ui, sans-serif';
   c.textBaseline = 'middle';
   c.fillText('PUMP RIDER', 148, 98);
+  // NEAR attribution on the card itself — the angular N glyph and
+  // the word NEAR beside the wordmark, both in the affiliation
+  // green — so every downloaded or shared card carries it visibly.
+  // Default stamp only: the product build draws no affiliation.
+  if (VARIANT !== 'product') {
+    const wmW = c.measureText('PUMP RIDER').width;
+    const gx = 148 + wmW + 22; const gy = 84; const gs = 28;
+    c.beginPath();
+    [[5, 19], [5, 5], [19, 19], [19, 5]].forEach(([u, v], i) => {
+      const X = gx + (u / 24) * gs; const Y = gy + (v / 24) * gs;
+      if (i === 0) c.moveTo(X, Y); else c.lineTo(X, Y);
+    });
+    c.strokeStyle = P.best; c.lineWidth = 3.4; c.lineCap = 'square'; c.lineJoin = 'miter'; c.stroke();
+    c.font = '800 30px system-ui, sans-serif';
+    c.fillStyle = P.best;
+    c.fillText('NEAR', gx + gs + 10, 98);
+  }
   c.font = '800 34px system-ui, sans-serif';
   c.fillStyle = P.green;
   const presetW = c.measureText(card.preset || 'CUSTOM').width;
   c.fillText(card.preset || 'CUSTOM', 1008 - presetW, 98);
 
-  // Hero score (always gold, like the HUD). The verdict pill gets its
-  // OWN line under the hero, left-aligned, exactly as on screen: on
-  // the hero's row it ran out of width at 4-digit scores and painted
-  // over the PTS.
-  c.font = '900 148px system-ui, sans-serif';
-  c.fillStyle = P.score;
-  c.fillText(card.heroText, 72, 236);
+  // Hero score: gold on a win, red on a loss, like the screen. The
+  // verdict pill gets its OWN line under the hero, left-aligned,
+  // exactly as on screen: on the hero's row it ran out of width at
+  // 4-digit scores and painted over the PTS.
+  c.font = '900 132px system-ui, sans-serif';
+  c.fillStyle = card.win ? P.score : P.red;
+  c.fillText(card.heroText, 72, 226);
   const heroW = c.measureText(card.heroText).width;
-  c.font = '800 50px system-ui, sans-serif';
+  c.font = '800 44px system-ui, sans-serif';
   c.fillStyle = P.dim;
-  c.fillText('PTS', 84 + heroW, 256);
+  c.fillText('PTS', 84 + heroW, 244);
   c.font = '800 27px system-ui, sans-serif';
   const vW = c.measureText(card.verdictLabel).width + 44;
-  rr(c, 72, 294, vW, 58, 29);
+  rr(c, 72, 262, vW, 50, 25);
   c.strokeStyle = toneColor; c.lineWidth = 2.5; c.stroke();
   c.fillStyle = toneColor;
-  c.fillText(card.verdictLabel, 94, 324);
+  c.fillText(card.verdictLabel, 94, 288);
 
   // Sub stats: time in trade (left), gain + best combo (right).
   c.font = '700 25px system-ui, sans-serif';
   c.fillStyle = P.dim;
-  c.fillText('TIME IN TRADE', 72, 402);
+  c.fillText('TIME IN TRADE', 72, 352);
   const gainLabel = 'GAIN';
-  c.fillText(gainLabel, 1008 - c.measureText(gainLabel).width, 402);
-  c.font = '800 56px system-ui, sans-serif';
+  c.fillText(gainLabel, 1008 - c.measureText(gainLabel).width, 352);
+  c.font = '800 50px system-ui, sans-serif';
   c.fillStyle = P.ink;
-  c.fillText(card.timeText, 72, 452);
+  c.fillText(card.timeText, 72, 400);
   const gainW = c.measureText(card.gainText).width;
   c.fillStyle = toneColor;
-  c.fillText(card.gainText, 1008 - gainW, 452);
+  c.fillText(card.gainText, 1008 - gainW, 400);
   c.font = '800 30px system-ui, sans-serif';
   c.fillStyle = P.gold;
   const multText = `${card.multText} BEST COMBO`;
-  c.fillText(multText, 1008 - c.measureText(multText).width, 498);
+  c.fillText(multText, 1008 - c.measureText(multText).width, 444);
 
   // The stake settlement strip, same string and tone as on screen:
   // what went in, what came out, and the difference.
-  rr(c, 72, 514, 936, 46, 12);
+  rr(c, 72, 462, 936, 44, 12);
   c.fillStyle = P.panel; c.fill();
   c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
   c.font = '800 29px system-ui, sans-serif';
   c.fillStyle = card.moneyTone === 'green' ? P.best : card.moneyTone === 'red' ? P.red : P.dim;
   const moneyW = c.measureText(card.moneyText).width;
-  c.fillText(card.moneyText, (1080 - moneyW) / 2, 538);
+  c.fillText(card.moneyText, (1080 - moneyW) / 2, 485);
 
-  // The chart of the run itself.
-  const bx = 72; const by = 576; const bw = 936; const bh = 172;
+  // The quiet note under the strip, same as the screen.
+  c.font = '700 24px system-ui, sans-serif';
+  c.fillStyle = P.dim;
+  const noteW = c.measureText(card.vsPrevText).width;
+  c.fillText(card.vsPrevText, (1080 - noteW) / 2, 534);
+
+  // The chart of the run itself — the card's centrepiece now: twice
+  // the old box, funded by the tighter headline, sub, strip and
+  // tiles around it, so the run's steps and slopes read properly.
+  const bx = 72; const by = 552; const bw = 936; const bh = 320;
   rr(c, bx, by, bw, bh, 18);
   c.fillStyle = P.panel; c.fill();
   c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
-  const m = chartModel(lastSummary);
+  const m = chartModel(lastSummary, lastPrev);
   const chartColor = card.tone === 'green' ? P.best : card.tone === 'red' ? P.red : P.chart;
   const X0 = bx + 20; const X1 = bx + bw - 20; const YT = by + 22; const YB = by + bh - 18;
   const px = (u) => X0 + u * (X1 - X0);
@@ -1925,10 +2631,32 @@ function renderPnlPng() {
     c.save();
     rr(c, bx, by, bw, bh, 18);
     c.clip();
+    // The called bar: a neutral dashed line across the frame at the
+    // needed height on the common scale, labelled at the left.
+    c.beginPath();
+    c.setLineDash([8, 8]);
+    c.moveTo(X0, py(m.targetY)); c.lineTo(X1, py(m.targetY));
+    c.strokeStyle = P.barLine; c.lineWidth = 2; c.globalAlpha = 0.85; c.stroke();
+    c.setLineDash([]);
+    c.globalAlpha = 1;
+    c.font = '800 22px system-ui, sans-serif';
+    c.fillStyle = P.barLine;
+    c.fillText(`BAR ${m.needed}`, X0 + 4, Math.max(by + 30, py(m.targetY) - 10));
+    // The previous run, quiet underneath on the same scale.
+    if (m.hasPrev && m.prevLine.length >= 2) {
+      c.beginPath();
+      m.prevLine.forEach((p, i) => { if (i === 0) c.moveTo(px(p.x), py(p.y)); else c.lineTo(px(p.x), py(p.y)); });
+      c.strokeStyle = P.prevLine; c.lineWidth = 2.5; c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke();
+      const lp = m.prevLine[m.prevLine.length - 1];
+      c.font = '700 20px system-ui, sans-serif';
+      c.fillStyle = P.prevLine;
+      const lpw = c.measureText('last run').width;
+      c.fillText('last run', Math.max(X0, px(lp.x) - lpw), Math.min(YB - 4, py(lp.y) + 26));
+    }
     if (m.peakScore > 0) {
       c.beginPath();
       c.setLineDash([10, 9]);
-      c.moveTo(X0, py(1)); c.lineTo(px(m.crash.x) - 26, py(1)); // stops short of the crash X
+      c.moveTo(X0, py(m.peakY)); c.lineTo(px(m.crash.x) - 26, py(m.peakY)); // stops short of the crash X
       c.strokeStyle = chartColor; c.lineWidth = 2; c.globalAlpha = 0.55; c.stroke();
       c.setLineDash([]);
       c.globalAlpha = 1;
@@ -1964,29 +2692,29 @@ function renderPnlPng() {
     c.fillText(highText, X1 - 30 - c.measureText(highText).width, by + 36);
   }
 
-  // Milestone tiles.
-  const tileY = 800; const tileH = 118; const gap = 18;
+  // Milestone tiles — one slim row now, so the chart can be tall.
+  const tileY = 888; const tileH = 94; const gap = 18;
   const tileW = (bw - gap * 3) / 4;
   card.tiles.forEach((tile, i) => {
     const tx = bx + i * (tileW + gap);
     rr(c, tx, tileY, tileW, tileH, 16);
     c.fillStyle = P.panel; c.fill();
     c.strokeStyle = P.line; c.lineWidth = 2; c.stroke();
-    c.font = '800 50px system-ui, sans-serif';
+    c.font = '800 42px system-ui, sans-serif';
     c.fillStyle = P.ink;
     const vw = c.measureText(tile.value).width;
-    c.fillText(tile.value, tx + (tileW - vw) / 2, tileY + 48);
-    c.font = '700 21px system-ui, sans-serif';
+    c.fillText(tile.value, tx + (tileW - vw) / 2, tileY + 42);
+    c.font = '700 19px system-ui, sans-serif';
     c.fillStyle = P.dim;
     const lw = c.measureText(tile.label).width;
-    c.fillText(tile.label, tx + (tileW - lw) / 2, tileY + 90);
+    c.fillText(tile.label, tx + (tileW - lw) / 2, tileY + 72);
   });
 
   // Footer pun.
-  c.font = '700 31px system-ui, sans-serif';
+  c.font = '700 27px system-ui, sans-serif';
   c.fillStyle = P.dim;
   const fw = c.measureText(card.footer).width;
-  c.fillText(card.footer, (1080 - fw) / 2, 992);
+  c.fillText(card.footer, (1080 - fw) / 2, 1028);
 
   return cv.toDataURL('image/png');
 }
@@ -2002,10 +2730,35 @@ function downloadPnl() {
   a.remove();
 }
 
-function shareOnX() {
+// Sharing carries the CARD IMAGE, not just words. Preferred path:
+// the share sheet (Web Share API) with the painted PNG attached as a
+// File and the share text riding along, so the image lands in the
+// post wherever the player sends it. Where file sharing is
+// unsupported, the two-step fallback: the PNG downloads exactly like
+// the Download button, the X intent opens with the text, and a toast
+// tells the player to attach the saved card. A user-cancelled share
+// sheet (AbortError) is silent — no fallback cascade.
+async function shareOnX() {
   if (!lastCard) return;
-  const url = `https://x.com/intent/tweet?text=${encodeURIComponent(lastCard.shareText)}`;
+  const text = lastCard.shareText;
+  try {
+    const pngUrl = renderPnlPng();
+    if (pngUrl && typeof navigator.canShare === 'function' && typeof navigator.share === 'function') {
+      const blob = await (await fetch(pngUrl)).blob();
+      const file = new File([blob], 'pump-rider-pnl.png', { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text });
+        return;
+      }
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError') return; // cancelled at the sheet: silent
+    // Any other share failure falls through to the download path.
+  }
+  downloadPnl();
+  const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank', 'noopener');
+  toast('card saved. attach it to your post.');
 }
 
 // Difficulty panels are collapsible on BOTH cards and closed by
@@ -2117,6 +2870,17 @@ const heldPointers = new Set();
 const heldKeys = new Set();
 let ignoredPointers = new Set();
 let ignoredKeys = new Set();
+// Pointer-type discipline: touch and pen pointers are the real
+// thing; a MOUSE pointer event that arrives while a touch is down,
+// or in the half second after one lifts, is the browser's synthetic
+// compatibility echo of that touch, not a second input. Echoes are
+// dropped before they can join (or, on release, chop) a hold.
+const touchPointers = new Set();
+let lastTouchEndAt = -Infinity;
+function isMouseEcho(e) {
+  return e.pointerType === 'mouse'
+    && (touchPointers.size > 0 || performance.now() - lastTouchEndAt < 500);
+}
 
 function refreshThrust() {
   let held = false;
@@ -2130,6 +2894,7 @@ function openStake() {
   ensureAudio();
   stakeOpen = true;
   syncStakeUI();
+  syncTargetUI();
   $('overlay-stake').classList.remove('hidden');
   syncState();
 }
@@ -2149,24 +2914,91 @@ stage.addEventListener('pointerdown', (e) => {
   // UI inside the stage (buttons, sliders, the cards themselves) is
   // not the one button, and its presses are never recorded as holds.
   if (e.target.closest('button, input, .card')) return;
+  if (isMouseEcho(e)) return; // a touch's compatibility echo, not input
+  if (heldPointers.has(e.pointerId)) { // a repeat down for a pointer already tracked changes nothing — but it does clear a cancel pardon: the pointer just proved it is still touching
+    const pardon = suspectPointers.get(e.pointerId);
+    if (pardon) { clearTimeout(pardon); suspectPointers.delete(e.pointerId); }
+    refreshThrust(); return;
+  }
   e.preventDefault();
   ensureAudio();
   heldPointers.add(e.pointerId);
+  if (e.pointerType === 'touch' || e.pointerType === 'pen') touchPointers.add(e.pointerId);
+  // Capture the pointer to the stage: its up/cancel can then never
+  // be re-targeted away mid-hold by a banner, a scroll or a browser
+  // gesture — the release always lands where the press began.
+  try { stage.setPointerCapture(e.pointerId); } catch { /* older engines: window-level up/cancel still lands */ }
   if (stakeOpen) return;
   if (mode === 'demo') { openStake(); return; }
   if (mode !== 'playing') return; // game over: canvas clicks never restart
   refreshThrust();
 });
-function endPointer(e) {
-  heldPointers.delete(e.pointerId);
-  ignoredPointers.delete(e.pointerId);
+function dropPointer(id) {
+  if (touchPointers.delete(id)) lastTouchEndAt = performance.now();
+  heldPointers.delete(id);
+  ignoredPointers.delete(id);
   refreshThrust();
 }
+function endPointer(e) {
+  // A release only ever ends its OWN pointer id — the set makes a
+  // cross-id chop impossible by construction — and a tracked hold
+  // must always be releasable, echo window or not.
+  const pardon = suspectPointers.get(e.pointerId);
+  if (pardon) { clearTimeout(pardon); suspectPointers.delete(e.pointerId); }
+  dropPointer(e.pointerId);
+}
+// A pointercancel is NOT proof the finger lifted: on iOS it also
+// fires when the browser momentarily reclaims the gesture (a system
+// edge swipe, a scroll negotiation, a callout attempt) while the
+// finger is still physically down — and dropping the hold on it is
+// exactly the cut-out-then-back pulse players report. So a cancel
+// earns a short pardon: if the pointer proves it is still touching
+// (any move, any repeat down) the pardon clears and the press never
+// ended; only a cancel followed by silence drops the hold.
+const suspectPointers = new Map();
+function cancelPointer(e) {
+  if (!heldPointers.has(e.pointerId) || suspectPointers.has(e.pointerId)) {
+    if (!heldPointers.has(e.pointerId)) dropPointer(e.pointerId);
+    return;
+  }
+  const timer = setTimeout(() => {
+    suspectPointers.delete(e.pointerId);
+    dropPointer(e.pointerId);
+  }, 250);
+  suspectPointers.set(e.pointerId, timer);
+}
 window.addEventListener('pointerup', endPointer);
-window.addEventListener('pointercancel', endPointer);
+window.addEventListener('pointercancel', cancelPointer);
+window.addEventListener('pointermove', (e) => {
+  const pardon = suspectPointers.get(e.pointerId);
+  if (pardon) { clearTimeout(pardon); suspectPointers.delete(e.pointerId); }
+}, { passive: true });
+// Long-press hardening, scoped to the game surface only: the iOS
+// callout / context menu and the legacy gesture events are how a
+// steady hold gets interrupted (the browser cancels the pointer to
+// show its own UI, and the hold comes back as pulses). Nothing here
+// is registered on the document: the help strip and the rest of the
+// page keep their native touch behaviour.
+stage.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+stage.addEventListener('gesturestart', (e) => { e.preventDefault(); });
+stage.addEventListener('gesturechange', (e) => { e.preventDefault(); });
+// The same hardening at the touch layer for engines whose gesture
+// stealing starts before pointer events settle: preventDefault on
+// the surface's own touchstart/touchmove (passive: false, or the
+// browser ignores it) stops a scroll or zoom from ever claiming a
+// hold. Presses that begin on overlay UI are not the game's to eat.
+const stageTouchGuard = (e) => {
+  if (e.target.closest('button, input, .card')) return;
+  e.preventDefault();
+};
+stage.addEventListener('touchstart', stageTouchGuard, { passive: false });
+stage.addEventListener('touchmove', stageTouchGuard, { passive: false });
 window.addEventListener('blur', () => {
   heldPointers.clear();
   heldKeys.clear();
+  touchPointers.clear();
+  for (const timer of suspectPointers.values()) clearTimeout(timer);
+  suspectPointers.clear();
   refreshThrust();
   if (mode === 'playing' && !paused) togglePause();
 });
@@ -2202,13 +3034,104 @@ function togglePause() {
   paused = !paused;
   $('paused-banner').classList.toggle('hidden', !paused);
   $('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  $('btn-pause-stage').textContent = paused ? '▶' : '⏸';
+  $('btn-pause-stage').setAttribute('aria-label', paused ? 'Resume the run' : 'Pause the run');
+}
+// A hidden tab auto-pauses a live run; the soundtrack holds its
+// place with it and resumes when the game does.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && mode === 'playing' && !paused) togglePause();
+});
+function syncSoundBtn() {
+  $('btn-sound').textContent = muted ? '🔇' : '🔊';
+  $('btn-sound').setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
 }
 function toggleMute() {
   muted = !muted;
   store(MUTE_KEY, muted ? '1' : '0');
-  $('btn-sound').textContent = `Sound: ${muted ? 'off' : 'on'}`;
+  syncSoundBtn();
+  if (musicGain) musicGain.gain.value = muted ? 0 : MUSIC_VOL; // the mute silences the music at its gain node, SFX at their gate
   if (!muted) ensureAudio();
 }
+
+// ------------------------------------------------- run it back + reset
+// Run it back NEVER starts a run directly: it returns to the stake
+// card with the last stake and bar still picked, and the next run
+// starts only when the player apes in again.
+function backToStake() {
+  if (mode !== 'over') return;
+  disarmReset();
+  mode = 'demo';
+  newRun(seedParam !== null ? seedParam : 'pump-rider-demo'); // re-park the frozen menu scene
+  $('overlay-over').classList.add('hidden');
+  openStake();
+}
+
+// The reset button: two steps, because it wipes EVERYTHING the game
+// remembers — best, the last run (its curve included), the saved
+// stake, the saved bar, the difficulty settings — back to factory
+// defaults (stake $10, bar +200%, Chill). The first tap arms it; a
+// second tap within a few seconds executes. Any other tap, or the
+// timeout, disarms it.
+let resetArmed = false;
+let resetArmTimer = 0;
+function disarmReset() {
+  if (!resetArmed && !resetArmTimer) return;
+  resetArmed = false;
+  clearTimeout(resetArmTimer);
+  resetArmTimer = 0;
+  const btn = $('btn-reset');
+  btn.classList.remove('armed');
+  btn.textContent = 'reset';
+}
+function armReset() {
+  resetArmed = true;
+  const btn = $('btn-reset');
+  btn.classList.add('armed');
+  btn.textContent = 'sure? tap again to wipe';
+  clearTimeout(resetArmTimer);
+  resetArmTimer = setTimeout(disarmReset, 3500);
+}
+function wipeAll() {
+  storeRemove(BEST_KEY);
+  storeRemove(LAST_RUN_KEY);
+  storeRemove(STAKE_KEY);
+  storeRemove(TARGET_KEY);
+  storeRemove(SETTINGS_KEY);
+  storeRemove(CURRENCY_KEY);
+  best = 0;
+  bestBeaten = false;
+  $('stat-best-box').classList.remove('beaten');
+  lastSummary = null;
+  lastCard = null;
+  lastPrev = null;
+  // Defaults applied in memory only: the keys stay absent, exactly
+  // like a first-ever boot — dollars, $10, the default bar, Chill.
+  currency = 'usd';
+  stakeIndex = STAKE_LADDER.indexOf(DEFAULT_STAKE);
+  nearStake = DEFAULT_NEAR_STAKE;
+  buildStakeChips();
+  targetIndex = TARGET_LADDER.indexOf(DEFAULT_TARGET);
+  settings = { preset: 'chill', ...presetSettings('chill') };
+  syncStakeUI();
+  syncTargetUI();
+  syncSettingsUI();
+  disarmReset();
+  // Back to the start card, factory fresh.
+  mode = 'demo';
+  newRun(seedParam !== null ? seedParam : 'pump-rider-demo');
+  $('overlay-over').classList.add('hidden');
+  $('overlay-start').classList.remove('hidden');
+  syncState();
+}
+function onResetTap() {
+  if (resetArmed) wipeAll();
+  else armReset();
+}
+// Any tap that is not the reset button itself stands the wipe down.
+window.addEventListener('pointerdown', (e) => {
+  if (resetArmed && !e.target.closest('#btn-reset')) disarmReset();
+}, true);
 
 $('btn-start').addEventListener('click', () => { openStake(); });
 $('btn-over-settings').addEventListener('click', () => {
@@ -2222,10 +3145,13 @@ $('btn-start-settings').addEventListener('click', () => {
 });
 $('btn-ape').addEventListener('click', () => { apeIn(); });
 $('btn-ngmi').addEventListener('click', () => { closeStake(); });
-$('btn-again').addEventListener('click', () => { startGame(); });
+$('btn-again').addEventListener('click', () => { backToStake(); });
+$('btn-reset').addEventListener('click', () => { onResetTap(); });
 $('btn-download').addEventListener('click', () => { downloadPnl(); });
 $('btn-share').addEventListener('click', () => { shareOnX(); });
 $('btn-pause').addEventListener('click', () => togglePause());
+$('btn-pause-stage').addEventListener('click', () => togglePause());
+$('btn-resume').addEventListener('click', () => togglePause());
 $('btn-sound').addEventListener('click', () => toggleMute());
 $('btn-theme').addEventListener('click', () => toggleTheme());
 
@@ -2265,9 +3191,11 @@ function sizeStage() {
   };
   const wrap = document.querySelector('.stage-wrap');
   const wrapCs = getComputedStyle(wrap);
+  // The toast is fixed-position now: it floats over the page and
+  // costs the stage nothing, so it is not part of the used height.
   const used = chromeOf(document.querySelector('.topbar'))
-    + chromeOf($('toast'))
     + chromeOf(document.querySelector('.howto'))
+    + chromeOf(document.querySelector('.fan-note'))
     + parseFloat(wrapCs.paddingTop || 0) + parseFloat(wrapCs.paddingBottom || 0);
   stage.style.flex = '0 0 auto'; // the measured px height wins over the flex chain
   stage.style.height = `${Math.max(STAGE_FLOOR_PX, Math.floor(vh - used))}px`;
@@ -2547,8 +3475,20 @@ function frame(ts) {
 // Harmless in normal play — it changes nothing, only observes.
 window.__pumpRider = {
   get mode() { return mode; },
+  get paused() { return paused; },
+  musicState: () => ({
+    started: !!musicTimer,
+    gain: musicGain ? musicGain.gain.value : null,
+    step: musicStep,
+    paused,
+  }),
   get stakeOpen() { return stakeOpen; },
   get stake() { return currentStake(); },
+  get currency() { return currency; },
+  get variant() { return VARIANT; },
+  get target() { return currentTarget(); },
+  get best() { return best; },
+  get resetArmed() { return resetArmed; },
   get thrustHeld() { return thrustHeld; },
   get game() { return G; },
   get lastRun() { return lastSummary; },
@@ -2562,7 +3502,8 @@ window.__pumpRider = {
 applyTheme();
 wireSettings();
 wireStake();
-$('btn-sound').textContent = `Sound: ${muted ? 'off' : 'on'}`;
+wireTarget();
+syncSoundBtn();
 sizeStage();
 newRun(seedParam !== null ? seedParam : 'pump-rider-demo');
 mode = 'demo';

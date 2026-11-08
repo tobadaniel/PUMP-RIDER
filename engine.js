@@ -62,6 +62,29 @@ export const PRESETS = {
   degen: { speedScale: 1.3, gravity: 1.25, thrust: 1.25 },
 };
 
+// Volatility coupling --------------------------------------------------------
+// Difficulty IS market volatility: the settings bend not only how the
+// rocket flies but how fast points accrue. Every point a run earns —
+// distance, orbs, close calls, the rug bonus — is scaled by ONE payout
+// factor derived from the three multipliers: the geometric mean of
+// (speedScale, thrust, gravity), power-curved. Calibrated by
+// measurement with the test pilot (see test group 16): classic
+// (all 1s) pays exactly x1.00, the slider floor (all 0.5s) pays x0.75,
+// the ceiling (1.5 / 1.8 / 1.8) pays x1.25 — and a competent pilot
+// banks roughly 120 pts in 10s at the floor, ~150 in 5s at classic,
+// ~300 in 5s at the ceiling. The curve is deliberately gentler than
+// the raw settings span: the physics themselves already accrue ~3x
+// faster per second at the ceiling than at the floor, so a steeper
+// factor would overshoot the ceiling band and starve the floor.
+export const PAYOUT_CURVE = 0.42;
+export function payoutFactorFor(settings) {
+  const st = settings || {};
+  const geo = Math.cbrt(
+    (st.speedScale ?? 1) * (st.thrust ?? 1) * (st.gravity ?? 1),
+  );
+  return Math.pow(geo, PAYOUT_CURVE);
+}
+
 // Rug pulls ------------------------------------------------------------------
 export const RUG_WARN_TIME = 1.1; // seconds of flashing warning first
 export const RUG_ACTIVE_TIME = 4.2; // seconds from drop to "survived"
@@ -108,6 +131,7 @@ export function createGame(seed, opts = {}) {
     gravity, // effective downward accel for this run
     netThrust, // effective upward accel while holding, net of gravity
     speedScale,
+    payoutFactor: payoutFactorFor(st), // volatility: scales every point earned
     time: 0,
     x: 60,
     y: 0, // set below, once the launch pad exists
@@ -278,7 +302,7 @@ export function step(state, dt, thrust) {
     state.closeCd <= 0 &&
     state.time > 1.5
   ) {
-    state.bonusScore += CLOSE_BONUS;
+    state.bonusScore += Math.round(CLOSE_BONUS * state.payoutFactor);
     state.closeCd = CLOSE_COOLDOWN;
     events.push({ type: 'closecall', gap });
   }
@@ -289,7 +313,8 @@ export function step(state, dt, thrust) {
   }
 
   state.score =
-    Math.floor(state.x / SCORE_PER_UNIT) + state.orbScore + state.bonusScore;
+    Math.floor((state.x * state.payoutFactor) / SCORE_PER_UNIT) +
+    state.orbScore + state.bonusScore;
   return events;
 }
 
@@ -321,7 +346,7 @@ function stepRug(state, dt, events) {
     if (state.rugT <= 0) {
       state.rugPhase = 'idle';
       state.nextRugIn = 15 + state.rng() * 13;
-      state.bonusScore += RUG_BONUS;
+      state.bonusScore += Math.round(RUG_BONUS * state.payoutFactor);
       events.push({ type: 'rugsurvived' });
     }
   }
@@ -350,7 +375,7 @@ function stepOrbs(state, events) {
         COMBO_CAP,
         1 + (state.combo - 1) * COMBO_STEP,
       );
-      const points = Math.round(ORB_BASE * state.multiplier);
+      const points = Math.round(ORB_BASE * state.multiplier * state.payoutFactor);
       state.orbScore += points;
       state.orbsCollected += 1;
       events.push({
