@@ -1412,7 +1412,18 @@ function sizeStage() {
   const stage = $('stage');
   if (window.innerWidth > 760) {
     // Desktop keeps the stylesheet sizing; drop any phone measurement.
-    if (stage.style.height) { stage.style.height = ''; stage.style.flex = ''; fit(); }
+    if (stage.style.height) { stage.style.height = ''; stage.style.flex = ''; }
+    // The backing store must still be fitted on this path: fit() is
+    // the only code that ever sizes it, and skipping it here left the
+    // canvas at its 300x150 default while draw() renders in CSS-pixel
+    // coordinates, so everything below y=150 or right of x=300 (the
+    // rocket, most of the chart line) was clipped away and the
+    // surviving corner crop stretched over the stage. Android
+    // Chrome's "Desktop site" mode is exactly this geometry — a
+    // 980px layout viewport on a phone — which is how the rocket
+    // vanished there while phone view (and any window <= 760px,
+    // which takes the measured path below) rendered fine.
+    fit();
     return;
   }
   const vh = window.innerHeight || document.documentElement.clientHeight || 0;
@@ -1453,6 +1464,11 @@ function draw(dt) {
   const w = canvas.getBoundingClientRect().width;
   const h = canvas.getBoundingClientRect().height;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // Drift guard: if the backing store no longer matches the canvas's
+  // real box (a viewport change that fired no resize — a desktop-mode
+  // toggle, a devtools dock, a fold), re-fit before painting. The
+  // scene is repainted whole every frame, so the reset costs nothing.
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) fit();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const scaleX = w / viewW;
